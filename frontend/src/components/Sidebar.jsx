@@ -61,6 +61,8 @@ const [sidebarOpen, setSidebarOpen] = useState(false);
                 <SidebarLink to="/admin-dashboard" label="Dashboard" icon={assets.Home} />
                 <SidebarLink to="/employee" label="Employee" icon={assets.Emplyees} />
                 <SidebarLink to="/department" label="Department" icon={assets.Department} />
+                <SidebarLink to="/account" label="Account" icon={assets.Salary} />
+                <SidebarLink to="/payroll" label="Payroll" icon={assets.Salary} />
                 <SidebarLink to="/leave" label="Leave" icon={assets.Leave} />
                 <SidebarLink to="/loan" label="Loan" icon={assets.Salary} />
                 <SidebarLink to="/salary" label="Salary" icon={assets.Salary} />
@@ -98,6 +100,9 @@ const [sidebarOpen, setSidebarOpen] = useState(false);
                 <SidebarLink to="/setting" label="Change Password" icon={assets.Setting} />
               </>
             )}
+
+
+
           </ul>
         </nav>
       </div>

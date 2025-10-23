@@ -17,6 +17,8 @@ import Kpi from "../models/Kpi.js";
 import AdminEvaluation from "../models/adminEvaluation.js";
 import Attendance from "../models/attendance.js";
 import Loan from "../models/loan.js";
+import Payroll from "../models/Payroll.js";
+import axios from 'axios';
 
 
 
@@ -27,8 +29,15 @@ const addEmployee = async (req, res) => {
       designation, role, state,
       maritalStatus, dob, joinDate,
       gender, staffId, address, password,
-      experience, qualification, type
+      experience, qualification, type,
+      // Payroll fields
+      basicSalary, overtimeRate, taxIdentificationNumber,
+      bankName, accountNumber, accountName
     } = req.body;
+
+    console.log('Request body received:', {
+      name, email, staffId, basicSalary, overtimeRate
+    });
 
     const normalizedStaffId = staffId.toLowerCase();
 
@@ -49,9 +58,9 @@ const addEmployee = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(password, salt);
 
+    // Get Cloudinary URLs from req.files (already uploaded by multer-storage-cloudinary)
     const profileImage = req.files?.image?.[0]?.path || "";
     const cvFile = req.files?.cv?.[0]?.path || "";
-
 
 
     const newUser = new User({
@@ -65,34 +74,59 @@ const addEmployee = async (req, res) => {
 
     const savedUser = await newUser.save();
 
+    // Prepare bank account object
+    const bankAccount = {
+      bankName: bankName || "",
+      accountNumber: accountNumber || "",
+      accountName: accountName || ""
+    };
+
     const newEmployee = new Employee({
       userId: savedUser._id,
       name,
+      email,
+      department,
+      password: hashPassword,
+      role,
+      profileImage,
       phone,
       department,
       designation,
       state,
-      experience,
-      qualification,
-      maritalStatus,
+      experience: experience || "",
+      qualification: qualification || "",
+      maritalStatus: maritalStatus || "",
       dob,
       type,
       joinDate,
       gender,
       staffId: normalizedStaffId,
       address,
-      cv: cvFile
+      cv: cvFile,
+      // Payroll fields
+      basicSalary: basicSalary ? parseFloat(basicSalary) : 0,
+      overtimeRate: overtimeRate ? parseFloat(overtimeRate) : 0,
+      taxIdentificationNumber: taxIdentificationNumber || "",
+      bankAccount: bankAccount,
+      activeLoans: []
     });
 
     await newEmployee.save();
+
+    console.log('Employee created successfully with payroll data');
 
     res.status(201).json({
       success: true,
       message: "Employee added successfully",
       employee: newEmployee
     });
-    console.log('Uploaded files:', req.files);
+
   } catch (error) {
+    console.log('✅ CLOUDINARY CONFIG TEST:', {
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'Loaded ✅' : 'Missing ❌'
+});
     console.error("Register Employee Error:", error);
     res.status(500).json({
       success: false,
@@ -102,16 +136,20 @@ const addEmployee = async (req, res) => {
   }
 };
 
-// API to Update Employee
 const updateEmployee = async (req, res) => {
   try {
     const {
-      employeeId, // The _id of the Employee document to update
+      employeeId,
       name, email, phone, department,
       designation, role, state,
-      maritalStatus, dob, salary, type,
-      gender, staffId, address, password
+      maritalStatus, dob, type,
+      gender, staffId, address, password,
+      experience, qualification,
+      // Payroll fields
+      basicSalary, overtimeRate, taxIdentificationNumber,
+      bankName, accountNumber, accountName
     } = req.body;
+
 
     if (!staffId) {
       return res.json({ success: false, message: "Staff ID is required" });
@@ -139,10 +177,19 @@ const updateEmployee = async (req, res) => {
       return res.json({ success: false, message: "Staff ID already in use by another employee" });
     }
 
-    // Conditionally include uploaded files
-    const profileImage = req.files?.image?.[0]?.path;
-    const cvFile = req.files?.cv?.[0]?.path;
+    let profileImageUrl = employee.userId.profileImage;
+    let cvUrl = employee.cv;
 
+    // Get updated Cloudinary URLs if new files were uploaded
+    if (req.files?.image) {
+      profileImageUrl = req.files.image[0].path; // Cloudinary URL
+      console.log('Updated profile image URL:', profileImageUrl);
+    }
+
+    if (req.files?.cv) {
+      cvUrl = req.files.cv[0].path; // Cloudinary URL
+      console.log('Updated CV URL:', cvUrl);
+    }
 
     // Prepare user update data
     const updatedUserData = {
@@ -150,11 +197,8 @@ const updateEmployee = async (req, res) => {
       email,
       role,
       department,
+      profileImage: profileImageUrl
     };
-
-    if (profileImage) {
-      updatedUserData.profileImage = profileImage;
-    }
 
     if (password) {
       const salt = await bcrypt.genSalt(10);
@@ -163,8 +207,16 @@ const updateEmployee = async (req, res) => {
 
     await User.findByIdAndUpdate(userId, updatedUserData, { new: true });
 
+    // Prepare bank account object
+    const bankAccount = {
+      bankName: bankName || employee.bankAccount?.bankName || "",
+      accountNumber: accountNumber || employee.bankAccount?.accountNumber || "",
+      accountName: accountName || employee.bankAccount?.accountName || ""
+    };
+
     // Prepare employee update data
     const updatedEmployeeData = {
+      name,
       phone,
       department,
       designation,
@@ -172,20 +224,32 @@ const updateEmployee = async (req, res) => {
       maritalStatus,
       dob,
       type,
-      salary,
       gender,
       staffId: normalizedStaffId,
       address,
+      experience: experience || employee.experience,
+      qualification: qualification || employee.qualification,
+      cv: cvUrl,
+      // Payroll fields
+      basicSalary: basicSalary ? parseFloat(basicSalary) : employee.basicSalary || 0,
+      overtimeRate: overtimeRate ? parseFloat(overtimeRate) : employee.overtimeRate || 0,
+      taxIdentificationNumber: taxIdentificationNumber || employee.taxIdentificationNumber || "",
+      bankAccount: bankAccount
     };
 
-    if (cvFile) {
-      updatedEmployeeData.cv = cvFile;
-    }
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      employeeId, 
+      updatedEmployeeData, 
+      { new: true }
+    ).populate('userId');
 
-    await Employee.findByIdAndUpdate(employeeId, updatedEmployeeData, { new: true });
+    console.log('Employee updated successfully with payroll data');
 
-    res.json({ success: true, message: "Employee updated successfully" });
-    console.log("Uploaded files:", req.files);
+    res.json({ 
+      success: true, 
+      message: "Employee updated successfully",
+      employee: updatedEmployee
+    });
 
   } catch (error) {
     console.error("Update Employee Error:", error);
@@ -808,127 +872,116 @@ const resumeLeave = async (req, res) => {
 // API to add salary using staffId lookup
 const addSalary = async (req, res) => {
   try {
-    const filePath = path.join('public', 'upload', req.file.filename);
-    const workbook = xlsx.readFile(filePath);
+    // ✅ Step 1: Download Excel from Cloudinary
+    const fileUrl = req.file.path;
+    const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+
+    // ✅ Step 2: Parse Excel from buffer
+    const workbook = xlsx.read(response.data, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = xlsx.utils.sheet_to_json(sheet);
-
-    // Helper function to convert Excel serial date
-    const excelDateToJSDate = (serial) => {
-      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-      const days = Math.floor(serial);
-      const ms = days * 24 * 60 * 60 * 1000;
-      return new Date(excelEpoch.getTime() + ms);
-    };
 
     const salaryData = [];
 
     for (const row of data) {
-      const staffId = (row.staffId || '').trim().toLowerCase();
-
-      if (!staffId) {
-        console.warn('Missing staffId in row:', row);
-        continue;
-      }
+      const staffId = (row["Staff ID"] || "").trim().toLowerCase();
+      if (!staffId) continue;
 
       const employee = await Employee.findOne({ staffId });
+      if (!employee) continue;
 
-      if (!employee) {
-        console.warn(`Employee with staffId ${staffId} not found. Skipping.`);
-        continue;
+      const loanDeduction = Number(row["Loan Deductions (₦)"]) || 0;
+      const activeLoan = await Loan.findOne({ userId: employee.userId, status: "Approved" });
+
+      if (activeLoan && loanDeduction > 0) {
+        const repayment = Math.min(loanDeduction, activeLoan.amount - activeLoan.totalRepaid);
+        activeLoan.totalRepaid += repayment;
+        if (activeLoan.totalRepaid >= activeLoan.amount) activeLoan.status = "Completed";
+        await activeLoan.save();
       }
 
-      // ✅ Safely parse payDate
-      let payDate;
-      if (typeof row.payDate === 'number') {
-        payDate = excelDateToJSDate(row.payDate);
-      } else {
-        payDate = new Date(row.payDate);
-      }
-
-      // ✅ FIX: Declare loan deduction from Excel
-      const excelLoanDeduction = row.loan || 0;
-      const loan = await Loan.findOne({
-        userId: employee.userId,
-        status: 'Approved',
-      });
-
-      if (loan && excelLoanDeduction > 0) {
-        // Prevent overpayment
-        const repayment = Math.min(excelLoanDeduction, loan.amount - loan.totalRepaid);
-
-        loan.totalRepaid += repayment;
-
-        if (loan.totalRepaid >= loan.amount) {
-          loan.totalRepaid = loan.amount;
-          loan.status = 'Completed';
-        }
-
-        await loan.save();
-      }
-
-
-      // ✅ Push salary record (loan field stores Excel deduction for this month)
       salaryData.push({
         employeeId: employee._id,
-        basicSalary: row.basicSalary,
-        transportAllowance: row.transportAllowance || 0,
-        mealAllowance: row.mealAllowance || 0,
-        pension: row.pension || 0,
-        paye: row.paye || 0,
-        growthSalary: row.growthSalary || 0,
-        netSalary: row.netSalary || 0,
-        month: row.month,
-        year: row.year,
-        overTime: row.overTime,
-        loan: excelLoanDeduction,
-        payDate: payDate,
+        basicSalary: Number(row["Basic Salary (₦)"]) || 0,
+        transportAllowance: Number(row["Transport Allowance (₦)"]) || 0,
+        mealAllowance: Number(row["Meal Allowance (₦)"]) || 0,
+        overtimeHours:Number(row["Overtime Hours"]) || 0,
+        overtimeRate:Number(row["Overtime Rate (₦)"]) || 0,
+        overTime: Number(row["Overtime Amount (₦)"]) || 0,
+        employeePension: Number(row["Employee Pension (₦)"]) || 0,
+        employerPension: Number(row["Employer Pension (₦)"]) || 0,
+        totalPension: Number(row["Total Pension (₦)"]) || 0,
+        paye: Number(row["PAYE Tax (₦)"]) || 0,
+        withholdingTax: Number(row["Withholding Tax (₦)"]) || 0,
+        loan: Number(row["Loan Deductions (₦)"]) || 0,
+        nonTaxPay: Number(row["Non-Tax Pay (₦)"]) || 0,
+        totalDeductions: Number(row["Total Deductions (₦)"]) || 0,
+        netSalary: Number(row["Net Salary (₦)"]) || 0,
+        growthSalary: Number(row["Gross Salary (₦)"]) || 0,
+        month: new Date().toLocaleString("default", { month: "long" }),
+        year: new Date().getFullYear().toString(),
+        payDate:new Date().toLocaleString("payDate"),
+        status: row["Status"] || "Pending",
       });
     }
 
     if (salaryData.length === 0) {
-      return res.status(400).json({ message: 'No valid salary entries found. Check staffIds.' });
+      return res.status(400).json({ message: "No valid salary entries found." });
     }
 
     await Salary.insertMany(salaryData);
-    fs.unlinkSync(filePath); // Delete uploaded Excel file after processing
-
-    res.status(200).json({ success: true, message: 'Salary data uploaded successfully', count: salaryData.length });
+    res.status(200).json({
+      success: true,
+      message: "✅ Salary data uploaded successfully",
+      count: salaryData.length,
+    });
   } catch (err) {
-    console.error('Error:', err);
-    res.status(500).json({ message: 'Failed to upload salary data', error: err.message });
+    console.error("❌ Error uploading salary:", err);
+    res.status(500).json({
+      message: "Failed to upload salary data",
+      error: err.message,
+    });
   }
 };
 
 
 
-
+// Get Employee Salary
 
 const getEmployeeSalaries = async (req, res) => {
   try {
+    const userId = req.userId;
 
-    const userId = req.userId
-    // Fetch salaries for the employee linked to the user
-    const salaries = await Salary.find()
+    // ✅ Find the employee document linked to this user
+    const employee = await Employee.findOne({ userId });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found for this user" });
+    }
+
+    // ✅ Fetch all salary records that belong to this employee
+    const salaries = await Salary.find({ employeeId: employee._id })
       .populate({
         path: 'employeeId',
         select: 'staffId designation type userId department',
         populate: [
-          { path: 'userId', select: 'name' },
+          { path: 'userId', select: 'name email' },
           { path: 'department', select: 'name' },
         ],
       })
       .sort({ year: -1, month: -1 });
 
-    // Filter for the current user
-    const employeeSalaries = salaries.filter(
-      salary => salary.employeeId?.userId?._id.toString() === userId
-    );
+    if (!salaries.length) {
+      return res.json({
+        message: "No salary records found for this employee",
+        data: [],
+      });
+    }
 
-    // Group salaries by month/year
+    // ✅ Group salaries by month/year for payslip generation
     const groupedSalaries = {};
-    employeeSalaries.forEach(salary => {
-      const key = `${salary.month} ${salary.year}`;
+
+    salaries.forEach(salary => {
+      const key = `${salary.month}-${salary.year}`;
       if (!groupedSalaries[key]) {
         groupedSalaries[key] = {
           month: salary.month,
@@ -944,15 +997,22 @@ const getEmployeeSalaries = async (req, res) => {
     });
 
     res.json({
-      message: 'Employee salary records grouped',
+      message: "Employee salary records grouped successfully",
       count: Object.keys(groupedSalaries).length,
       data: Object.values(groupedSalaries),
     });
+
   } catch (error) {
-    console.error('Error fetching employee salaries:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error fetching employee salaries:", error);
+    res.status(500).json({
+      message: "Server error while fetching salaries",
+      error: error.message,
+    });
   }
 };
+
+
+
 
 
 // API to Get All Salaries
@@ -1001,7 +1061,6 @@ const getAllSalaries = async (req, res) => {
     res.status(500).json({ message: 'Failed to group salary records', error: error.message });
   }
 };
-
 
 
 

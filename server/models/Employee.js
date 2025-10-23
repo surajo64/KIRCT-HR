@@ -22,6 +22,29 @@ const employeeSchema = new mongoose.Schema({
   cv: { type: String }, // 🆕 CV attachment
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  // Payroll specific fields
+  basicSalary: {
+    type: Number,
+    default: 0
+  },
+  bankAccount: {
+    bankName: String,
+    accountNumber: String,
+    accountName: String
+  },
+  overtimeRate: {
+    type: Number,
+    default: 0
+  },
+  activeLoans: [{
+    amount: Number,
+    monthlyDeduction: Number,
+    startDate: Date,
+    endDate: Date,
+    balance: Number
+  }],
+  taxIdentificationNumber: String
+
 }, { minimize: false })
 
 const Employee = mongoose.model('Employee', employeeSchema)

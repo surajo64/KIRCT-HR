@@ -26,7 +26,11 @@ const salary = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!file) return toast.warning("Please select a file.");
+    if (!file) {
+      toast.warning("Please select a file.");
+      setIsLoading(false);
+      return;
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -35,7 +39,12 @@ const salary = () => {
       const { data } = await axios.post(
         `${backendUrl}/api/admin/add-salary`,
         formData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
       );
 
       if (data.success) {
@@ -43,15 +52,20 @@ const salary = () => {
         setShowForm(false);
         setFile(null);
         fetchSalaries();
-
-        console.log("Upload Response:", data);
       } else {
-
         toast.error(data.message || "Upload failed.");
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Something went wrong.");
+      console.error('Upload error:', error);
+
+      // Check if it's a server error with JSON response
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error("Something went wrong during upload.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +141,7 @@ const salary = () => {
       </div>
 
       {/* Table Container */}
+      {/* Table Container */}
       <div className="bg-white rounded-md shadow-sm mt-6 text-sm max-h-[80vh] min-h-[60vh] overflow-y-auto">
         {/* Table Header (only visible on sm and up) */}
         <div className="bg-gray-200 hidden sm:grid grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] py-3 px-4 rounded-t-md border-b-4 border-green-500 font-semibold">
@@ -156,26 +171,31 @@ const salary = () => {
               return b.year !== a.year ? b.year - a.year : monthB - monthA;
             })
             .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-            .map((item, index) => (
-              <div
-                key={index}
-                className="flex flex-col sm:grid sm:grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] items-center text-sm text-gray-700 px-6 py-3 border-b hover:bg-blue-50"
-              >
-                <p className="hidden sm:block">{(currentPage - 1) * itemsPerPage + index + 1}</p>
-                <p>{item.month}</p>
-                <p>{item.year}</p>
-                <p>{new Date(item.payDate).toLocaleDateString()}</p>
-                <p>₦{item.totalAmount.toLocaleString()}</p>
-                <div className="flex justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                  <button
-                    onClick={() => handleView(item)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1 rounded-full"
-                  >
-                    View Detail
-                  </button>
+            .map((item, index) => {
+              // Calculate total amount for this salary group
+              const totalAmount = item.records?.reduce((sum, salary) => sum + (salary.netSalary || 0), 0) || 0;
+
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col sm:grid sm:grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] items-center text-sm text-gray-700 px-6 py-3 border-b hover:bg-blue-50"
+                >
+                  <p className="hidden sm:block">{(currentPage - 1) * itemsPerPage + index + 1}</p>
+                  <p>{item.month}</p>
+                  <p>{item.year}</p>
+                  <p>{new Date(item.payDate).toLocaleDateString()}</p>
+                  <p>₦{totalAmount.toLocaleString()}</p>
+                  <div className="flex justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button
+                      onClick={() => handleView(item)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1 rounded-full"
+                    >
+                      View Detail
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
         ) : (
           <p className="text-center text-gray-500 py-8">No salary records found.</p>
         )}
@@ -214,7 +234,6 @@ const salary = () => {
             Next
           </button>
         </div>
-
       </div>
 
       {/* Form Modal */}
@@ -318,57 +337,96 @@ const salary = () => {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm border border-gray-300 mb-6">
                   <thead className="bg-gray-100">
-                  <tr className="text-center border-b">
-                    <th className="py-2 px-2">#</th>
-                    <th className="py-2 px-2">Staff ID</th>
-                    <th className="py-2 px-2">Full Name</th>
-                    <th className="py-2 px-2">Department</th>
-                    <th className="py-2 px-2 text-green-500">Basic</th>
-                    <th className="py-2 px-2 text-green-500">Transport Allowance</th>
-                    <th className="py-2 px-2 text-green-500">Meal Allowance</th>
-                    <th className="py-2 px-2 text-green-500">Over Time</th>
-                    <th className="py-2 px-2 text-yellow-500">Growth Salary</th>
-                    <th className="py-2 px-2 text-red-500">Paye</th>
-                    <th className="py-2 px-2 text-red-500">Loan Deduction</th>
-                    <th className="py-2 px-2 text-red-500">Pension</th>
-                    <th className="py-2 px-2 text-green-500">Net Pay</th>
-                  </tr>
-                </thead>
+                    <tr className="text-center border-b">
+                      <th className="py-2 px-2">#</th>
+                      <th className="py-2 px-2">Staff ID</th>
+                      <th className="py-2 px-2">Full Name</th>
+                      <th className="py-2 px-2">Department</th>
+
+                      {/* Salary Components */}
+                      <th className="py-2 px-2 text-green-600">Basic Salary</th>
+                      <th className="py-2 px-2 text-green-600">Transport Allowance</th>
+                      <th className="py-2 px-2 text-green-600">Meal Allowance</th>
+
+                      {/* Overtime */}
+                      <th className="py-2 px-2 text-green-600">Overtime Hours</th>
+                      <th className="py-2 px-2 text-green-600">Overtime Rate</th>
+                      <th className="py-2 px-2 text-green-600">Overtime Amount</th>
+
+                      {/* Pension */}
+                      <th className="py-2 px-2 text-blue-600">Employee Pension</th>
+                      <th className="py-2 px-2 text-blue-600">Employer Pension</th>
+                      <th className="py-2 px-2 text-blue-600">Total Pension</th>
+
+                      {/* Taxes */}
+                      <th className="py-2 px-2 text-red-600">PAYE</th>
+                      <th className="py-2 px-2 text-red-600">Withholding Tax</th>
+
+                      {/* Deductions */}
+                      <th className="py-2 px-2 text-red-600">Loan Deduction</th>
+                      <th className="py-2 px-2 text-red-600">Non-Tax Payment</th>
+                      <th className="py-2 px-2 text-red-600">Total Deductions</th>
+
+                      {/* Summary */}
+                      <th className="py-2 px-2 text-yellow-600">Gross Salary</th>
+                      <th className="py-2 px-2 text-green-700">Net Salary</th>   
+                      <th className="py-2 px-2">Status</th>
+                    </tr>
+                  </thead>
+
                   <tbody>
                     {viewClicked && (
                       <>
                         {filteredRecords.length > 0 ? (
                           filteredRecords.map((salary, idx) => (
-                           <tr key={salary._id} className="border-b hover:bg-gray-50 text-center">
-      <td className="py-2 px-2">{idx + 1}</td>
-      <td className="py-2 px-2">{salary?.employeeId?.staffId || 'N/A'}</td>
-      <td className="py-2 px-2">{salary?.employeeId?.userId?.name || 'N/A'}</td>
-      <td className="py-2 px-2">{salary?.employeeId?.department?.name || 'N/A'}</td>
+                            <tr
+                              key={salary._id}
+                              className="border-b hover:bg-gray-50 text-center"
+                            >
+                              <td className="py-2 px-2">{idx + 1}</td>
+                              <td className="py-2 px-2">{salary?.employeeId?.staffId || 'N/A'}</td>
+                              <td className="py-2 px-2">{salary?.employeeId?.userId?.name || 'N/A'}</td>
+                              <td className="py-2 px-2">{salary?.employeeId?.department?.name || 'N/A'}</td>
 
-      <td className="py-2 px-2 text-green-600 font-medium">₦{(salary.basicSalary ?? 0).toLocaleString()}</td>
-      <td className="py-2 px-2 text-green-600 font-medium">₦{(salary.transportAllowance ?? 0).toLocaleString()}</td>
-      <td className="py-2 px-2 text-green-600 font-medium">₦{(salary.mealAllowance ?? 0).toLocaleString()}</td>
-      <td className="py-2 px-2 text-green-600 font-medium">₦{(salary.overTime ?? 0).toLocaleString()}</td>
-      
-      <td className="py-2 px-2 text-yellow-600 font-medium">₦{(salary.growthSalary ?? 0).toLocaleString()}</td>
-      
-      <td className="py-2 px-2 text-red-500 font-medium">₦{(salary.paye ?? 0).toLocaleString()}</td>
-      <td className="py-2 px-2 text-red-500 font-medium">₦{(salary.loan ?? 0).toLocaleString()}</td>
-      <td className="py-2 px-2 text-red-500 font-medium">₦{(salary.pension ?? 0).toLocaleString()}</td>
-      
-      <td className="py-2 px-2 text-green-700 font-semibold bg-green-50">₦{(salary.netSalary ?? 0).toLocaleString()}</td>
-    </tr>
+                              {/* Salary Components */}
+                              <td className="py-2 px-2 text-green-700 font-medium">₦{(salary.basicSalary ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-green-700 font-medium">₦{(salary.transportAllowance ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-green-700 font-medium">₦{(salary.mealAllowance ?? 0).toLocaleString()}</td>
+
+                              {/* Overtime */}
+                              <td className="py-2 px-2">{salary.overtimeHours ?? 0}</td>
+                              <td className="py-2 px-2">₦{(salary.overtimeRate ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-green-700 font-medium">₦{(salary.overTime ?? 0).toLocaleString()}</td>
+
+                              {/* Pension */}
+                              <td className="py-2 px-2 text-blue-700">₦{(salary.employeePension ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-blue-700">₦{(salary.employerPension ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-blue-700 font-semibold">₦{(salary.totalPension ?? 0).toLocaleString()}</td>
+
+                              {/* Tax */}
+                              <td className="py-2 px-2 text-red-600">₦{(salary.paye ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-red-600">₦{(salary.withholdingTax ?? 0).toLocaleString()}</td>
+
+                              {/* Deductions */}
+                              <td className="py-2 px-2 text-red-600">₦{(salary.loan ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-red-600">₦{(salary.nonTaxPay ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-red-700 font-medium">₦{(salary.totalDeductions ?? 0).toLocaleString()}</td>
+
+                              {/* Summary */}
+                              <td className="py-2 px-2 text-yellow-700 font-medium">₦{(salary.growthSalary ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2 text-green-800 font-semibold bg-green-50">₦{(salary.netSalary ?? 0).toLocaleString()}</td>
+                              <td className="py-2 px-2">{salary.status}</td>
+                            </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="9" className="text-center py-4 text-gray-500">
-                              No records match the selected employee type.
+                            <td colSpan="22" className="text-center py-4 text-gray-500">
+                              No salary records found for this selection.
                             </td>
                           </tr>
                         )}
                       </>
                     )}
-
                   </tbody>
                 </table>
               </div>
@@ -394,6 +452,7 @@ const salary = () => {
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       )}

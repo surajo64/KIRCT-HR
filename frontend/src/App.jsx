@@ -29,9 +29,13 @@ import ResetPassword from './pages/resetPassword.jsx'
 import EmployeeLoan from './pages/employeeLoan.jsx'
 import Loan from './pages/loan.jsx'
 import SendMessage from './pages/message.jsx';
-
+import Account from './pages/account/Dashboard.jsx'
 import LoadingOverlay from './components/loadingOverlay.jsx';
 import { toast } from "react-toastify";
+import AccountDetailPage from './pages/account/accountDetail.jsx'
+import AllTransaction from './pages/account/all-transaction.jsx'
+import AllAccount from './pages/account/allAccount.jsx'
+import Payroll from './pages/account/Payroll.jsx'
 
 const App = () => {
   const { token, setToken, setUser, user } = useContext(AppContext);
@@ -122,7 +126,8 @@ const App = () => {
               <Route path='/salary' element={<Salary />} />
               <Route path='/setting' element={<Setting />} />
               <Route path='/messages' element = {<SendMessage/>}/>
-
+              <Route path='/account' element = {<Account/>}/>
+              <Route path='/payroll' element = {<Payroll/>}/>
               <Route path='/profile' element={<Profile />} />
               <Route path='/employee-leave' element={<EmployeeLeave />} />
               <Route path='/employee-loan' element={<EmployeeLoan />} />
@@ -133,7 +138,9 @@ const App = () => {
               <Route path='/evaluation' element={<Evaluation />} />
               <Route path='/admin-evaluation' element={<AdminEvaluation />} />
               <Route path='/attendence' element={<Attendance />} />
-             
+             <Route path="/account/:id" element={<AccountDetailPage />} />
+             <Route path="/all-transactions" element={<AllTransaction />} />
+             <Route path="/all-account" element={<AllAccount />} />
 
             </Routes>
           </div>

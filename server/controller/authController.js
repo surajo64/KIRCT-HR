@@ -17,7 +17,16 @@ export const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password)
     if (isMatch) {
       const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET,)
-      res.json({ success: true, token, user: { id: user._id, name: user.name, role: user.role }, });
+
+      res.json({
+        success: true,
+        token,
+        user: {
+          _id: user._id,   // <-- return _id instead of id
+          name: user.name,
+          role: user.role
+        },
+      });
     } else {
       res.json({ success: false, message: "Invalid UserName Or Password!" });
     }
@@ -226,7 +235,7 @@ export const replyToMessage = async (req, res) => {
 
     if (replyToAll) {
       console.log("Processing Reply to All");
-      
+
       // Get all recipient IDs (including original sender, excluding current user)
       recipientIds = [
         ...originalMessage.recipients.map(r => r._id.toString()),
@@ -234,7 +243,7 @@ export const replyToMessage = async (req, res) => {
       ];
     } else {
       console.log("Processing Reply to Sender Only");
-      
+
       // Only send to the original sender
       recipientIds = [originalMessage.createdBy._id.toString()];
     }
@@ -287,7 +296,7 @@ export const replyToMessage = async (req, res) => {
       recipientIds.forEach(rid => {
         io.to(rid).emit("newMessage", populatedNewMessage);
       });
-      
+
       // Also emit to sender so it appears in their sent folder
       io.to(userId.toString()).emit("newSentMessage", populatedNewMessage);
     }

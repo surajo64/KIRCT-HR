@@ -46,6 +46,15 @@ const employee = () => {
   const [experience, setExperience] = useState('');
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [state, setState] = useState("");
+
+  // Payroll specific fields
+  const [basicSalary, setBasicSalary] = useState('');
+  const [overtimeRate, setOvertimeRate] = useState('');
+  const [taxIdentificationNumber, setTaxIdentificationNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+
   const states = [
     "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
     "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "Gombe", "Imo", "Jigawa",
@@ -53,6 +62,14 @@ const employee = () => {
     "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe"
   ];
 
+  // Nigerian Banks List
+  const nigerianBanks = [
+    "Access Bank", "Citibank Nigeria", "Ecobank Nigeria", "Fidelity Bank", "First Bank of Nigeria",
+    "First City Monument Bank (FCMB)", "Globus Bank", "Guaranty Trust Bank (GTBank)", "Heritage Bank",
+    "Jaiz Bank", "Keystone Bank", "Polaris Bank", "Providus Bank", "Stanbic IBTC Bank", "Standard Chartered Bank",
+    "Sterling Bank", "Suntrust Bank", "Union Bank of Nigeria", "United Bank for Africa (UBA)", "Unity Bank",
+    "Wema Bank", "Zenith Bank"
+  ];
 
   const handleDepartmentChange = (e) => {
     const deptId = e.target.value;
@@ -71,10 +88,8 @@ const employee = () => {
     }, 300);
   };
 
-
   const handleView = (employee) => {
     setIsLoading(true);
-
     setTimeout(() => {
       setSelectedEmployee(employee);
       setIsLoading(false);
@@ -83,7 +98,6 @@ const employee = () => {
 
   const handleClose = () => {
     setIsLoading(true);
-
     setTimeout(() => {
       setShowForm(false)
       getAllEmployees();
@@ -93,22 +107,23 @@ const employee = () => {
       setSalary(""); setPassword(""); setRole(""); setAddress(""); setPhone("");
       setSelectedImageFile(null); setState(""); setQualification(""); setExperience("");
       setSelectedCVFile(""); setSelectedImageFile(""); setJoinDate("");
-      setShowForm(false); setType(""),
-        getAllEmployees();
+      setShowForm(false); setType("");
+      // Reset payroll fields
+      setBasicSalary(""); setOvertimeRate(""); setTaxIdentificationNumber("");
+      setBankName(""); setAccountNumber(""); setAccountName("");
+      getAllEmployees();
       setIsLoading(false);
     }, 300);
   }
 
   const handleAddNew = () => {
     setIsLoading(true);
-
     setTimeout(() => {
       setEditingAdmin(null);
       setShowForm(true);
       setIsLoading(false);
-    }, 300); // adjust to your preference
+    }, 300);
   };
-
 
   const handleCloseDetail = () => {
     setIsLoading(true);
@@ -121,7 +136,6 @@ const employee = () => {
       getAllEmployees();
       setIsLoading(false);
     }, 300);
-
   }
 
   const handleUpdate = (item) => {
@@ -152,16 +166,24 @@ const employee = () => {
       setQualification(item.qualification)
       setExperience(item.experience)
       setState(item.state);
+
+      // Set payroll fields
+      setBasicSalary(item.basicSalary || '');
+      setOvertimeRate(item.overtimeRate || '');
+      setTaxIdentificationNumber(item.taxIdentificationNumber || '');
+      setBankName(item.bankAccount?.bankName || '');
+      setAccountNumber(item.bankAccount?.accountNumber || '');
+      setAccountName(item.bankAccount?.accountName || '');
+
       setShowForm(true);
       setIsLoading(false);
     }, 300);
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Validate CV file
+
     // Validate profile image file
     if (
       selectedImageFile &&
@@ -172,7 +194,6 @@ const employee = () => {
       setIsLoading(false);
       return;
     }
-
 
     const normalizedId = staffId.trim().toUpperCase();
     setStaffId(normalizedId);
@@ -207,6 +228,14 @@ const employee = () => {
     formData.append("image", selectedImageFile);
 
 
+    // Append payroll fields
+    formData.append('basicSalary', basicSalary);
+    formData.append('overtimeRate', overtimeRate);
+    formData.append('taxIdentificationNumber', taxIdentificationNumber);
+    formData.append('bankName', bankName);
+    formData.append('accountNumber', accountNumber);
+    formData.append('accountName', accountName);
+
     try {
       if (editingAdmin && editingAdmin._id) {
         formData.append("employeeId", editingAdmin._id);
@@ -216,22 +245,14 @@ const employee = () => {
           formData,
           {
             headers: {
-              'Content-Type': 'multipart/form-data',
               Authorization: `Bearer ${token}`,
-            },
+            }
           }
         );
 
         if (data.success) {
           toast.success("Employee updated successfully!");
-          // Reset form
-          setName(""); setEmail(""); setStaffId(""); setDob(""); setGender("");
-          setMaritalStatus(""); setSelectedDepartment(""); setDesignation("");
-          setSalary(""); setPassword(""); setRole(""); setAddress(""); setPhone("");
-          setSelectedImageFile(null); setState(""); setQualification(""); setExperience("");
-          setSelectedCVFile(""); setSelectedImageFile(""); setJoinDate("");
-          setShowForm(false);
-          getAllEmployees();
+          handleClose();
         }
       } else {
         const { data } = await axios.post(
@@ -239,19 +260,14 @@ const employee = () => {
           formData,
           {
             headers: {
-              'Content-Type': 'multipart/form-data',
               Authorization: `Bearer ${token}`,
-            },
+            }
           }
         );
 
         if (data.success) {
           toast.success("Employee added successfully!");
-          // Reset form
-          setName(""); setEmail(""); setStaffId(""); setDob(""); setGender("");
-          setMaritalStatus(""); setSelectedDepartment(""); setDesignation("");
-          setSalary(""); setPassword(""); setRole(""); setAddress(""); setPhone("");
-          setSelectedImageFile(null); setState(""); setJoinDate("");
+          handleClose();
         } else {
           toast.error(data.message);
         }
@@ -265,7 +281,6 @@ const employee = () => {
   };
 
   const handleDeactivate = async () => {
-
     const { data } = await axios.post(`${backendUrl}/api/admin/deactivate-employee`, {
       employeeId: confirmDeleteId,
     }, {
@@ -283,9 +298,7 @@ const employee = () => {
     }
   };
 
-  // Step 1: Filter
-
-  // Filter departments based on search
+  // Filter employees based on search
   useEffect(() => {
     const filtered = (employees || []).filter((emp) => {
       const statusString = emp.status ? "active" : "inactive";
@@ -303,8 +316,6 @@ const employee = () => {
     setCurrentPage(1);
   }, [searchTerm, employees]);
 
-
-
   // Use filteredEmployees directly:
   const totalItems = employees?.length;
   const totalPages = Math.ceil(filteredEmployess.length / itemsPerPage);
@@ -317,10 +328,8 @@ const employee = () => {
     if (token) {
       getAllDepartment();
       getAllEmployees();
-
     }
   }, [token, searchTerm]);
-
 
   const fetchEmployeesByStatus = async (status, type) => {
     try {
@@ -336,6 +345,21 @@ const employee = () => {
   };
 
   if (!employees) return <LoadingOverlay />;
+
+  // ✅ Handle basic salary change
+const handleBasicSalaryChange = (e) => {
+  const value = e.target.value;
+  setBasicSalary(value);
+
+  // ✅ Auto-calculate overtime rate (Basic Salary ÷ 176)
+  if (value && !isNaN(value)) {
+    const rate = (parseFloat(value) / 176).toFixed(2);
+    setOvertimeRate(rate);
+  } else {
+    setOvertimeRate('');
+  }
+};
+
   return (
     <div className='w-full max-w-6xl mx-auto px-4 text-center'>
       <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-5">MANAGE EMPLOYEE</p>
@@ -365,8 +389,8 @@ const employee = () => {
           <p>Full Name</p>
           <p className="hidden md:block">Email</p>
           <p className="hidden lg:block">Department</p>
-          <p className="hidden lg:block">BOB</p>
-          <p className="hidden lg:block">Staus</p>
+          <p className="hidden lg:block">DOB</p>
+          <p className="hidden lg:block">Status</p>
           <p>Actions</p>
         </div>
 
@@ -403,7 +427,6 @@ const employee = () => {
                 {item.status ? 'Active' : 'Inactive'}
               </p>
 
-
               <div className="flex justify-end gap-2 flex-wrap">
                 <button
                   onClick={() => handleView(item)}
@@ -424,7 +447,6 @@ const employee = () => {
                 >
                   {item.status ? 'Deactivate' : 'Activate'}
                 </button>
-
               </div>
             </div>
           ))
@@ -438,10 +460,8 @@ const employee = () => {
             <button
               onClick={() => {
                 setIsLoading(true);
-
                 setTimeout(() => {
                   setCurrentPage(prev => Math.max(prev - 1, 1))
-
                   setIsLoading(false);
                 }, 300);
               }}
@@ -484,11 +504,9 @@ const employee = () => {
         {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
       </div>
 
-
-
       {showForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="w-full max-w-5xl bg-white p-6 rounded-lg shadow-md relative max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-6xl bg-white p-6 rounded-lg shadow-md relative max-h-[90vh] overflow-y-auto">
             {/* Close Button */}
             <button
               onClick={handleClose}
@@ -502,9 +520,11 @@ const employee = () => {
             </h2>
 
             <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Column */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Personal Information Column */}
                 <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Personal Information</h3>
+
                   <input
                     type="text"
                     value={name}
@@ -531,7 +551,8 @@ const employee = () => {
                     placeholder="Staff ID"
                     className="w-full p-2 border border-green-300 rounded"
                   />
-                  <label className="block font-medium mt-4">Date of Birth </label>
+
+                  <label className="block font-medium">Date of Birth</label>
                   <input
                     type="date"
                     value={dob}
@@ -579,6 +600,7 @@ const employee = () => {
                     required placeholder='Phone Number'
                     className="w-full p-2 border border-green-300 rounded"
                   />
+
                   {!editingAdmin && (
                     <input
                       type="password"
@@ -589,6 +611,20 @@ const employee = () => {
                       className="w-full p-2 border border-green-300 rounded"
                     />
                   )}
+
+                  <textarea
+                    value={address}
+                    onChange={e => setAddress(e.target.value)}
+                    placeholder="Address"
+                    rows={3}
+                    className="w-full p-2 border border-green-300 rounded"
+                  ></textarea>
+                </div>
+
+                {/* Employment Information Column */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Employment Information</h3>
+
                   <select
                     value={qualification}
                     onChange={e => setQualification(e.target.value)}
@@ -596,18 +632,13 @@ const employee = () => {
                   >
                     <option value="">Highest Qualification</option>
                     <option value="SSCE">SSCE</option>
-                    <option value="ND">National Diploma </option>
-                    <option value="NCE">Nigerian Certificate in Education </option>
-                    <option value="HND">Higher National Diploma </option>
-                    <option value="B.sc"> Bachelor’s Degree  </option>
-                    <option value="M.Sc ">Master’s Degrees</option>
+                    <option value="ND">National Diploma</option>
+                    <option value="NCE">Nigerian Certificate in Education</option>
+                    <option value="HND">Higher National Diploma</option>
+                    <option value="B.sc">Bachelor's Degree</option>
+                    <option value="M.Sc">Master's Degrees</option>
                     <option value="Ph.D">Doctorate Degrees</option>
                   </select>
-
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-4">
 
                   <select
                     value={experience}
@@ -615,15 +646,15 @@ const employee = () => {
                     className="w-full p-2 border border-green-300 rounded"
                   >
                     <option value="">Working Experience</option>
-                    <option value="1-5">1-5 Yeasrs</option>
-                    <option value="6-10">6-10 Yeasrs</option>
-                    <option value="11-15">11-15 Yeasrs</option>
-                    <option value="16-20">16-20 Yeasrs</option>
-                    <option value="21-25">21-25 Yeasrs</option>
-                    <option value="26-30">26-30 Yeasrs</option>
+                    <option value="1-5">1-5 Years</option>
+                    <option value="6-10">6-10 Years</option>
+                    <option value="11-15">11-15 Years</option>
+                    <option value="16-20">16-20 Years</option>
+                    <option value="21-25">21-25 Years</option>
+                    <option value="26-30">26-30 Years</option>
                   </select>
 
-                  <div className='flex flex-row gap-4'>
+                  <div className='flex flex-col gap-4'>
                     <select
                       value={selectedDepartment}
                       onChange={handleDepartmentChange}
@@ -642,13 +673,12 @@ const employee = () => {
                     >
                       <option value="">Employee Type</option>
                       <option value="permanent">Permanent</option>
-                      <option value="locum">locum/Contract</option>
-                      <option value="consultant">Consuntant</option>
-
+                      <option value="locum">Locum/Contract</option>
+                      <option value="consultant">Consultant</option>
                     </select>
                   </div>
 
-                  {/* Designation Dropdown (populated based on department) */}
+                  {/* Designation Dropdown */}
                   <select
                     value={designation}
                     onChange={e => setDesignation(e.target.value)}
@@ -662,7 +692,7 @@ const employee = () => {
                     ))}
                   </select>
 
-                  <label className="block font-medium mt-4">Join Date</label>
+                  <label className="block font-medium">Join Date</label>
                   <input
                     type="date"
                     value={joinDate}
@@ -670,28 +700,6 @@ const employee = () => {
                     required
                     className="w-full p-2 border border-green-300 rounded"
                   />
-
-                  {/* CV Upload */}
-                  <label className="block font-medium mt-4">Upload CV (PDF)</label>
-                  {editingAdmin && typeof selectedCVFile === 'string' && (
-                    <a
-                      href={selectedCVFile}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline block mb-2"
-                    >
-                      View Uploaded CV
-                    </a>
-                  )}
-
-                  <input
-                    type="file"
-                    name="cv"
-                    onChange={e => setSelectedCVFile(e.target.files[0])}
-                    accept=".pdf"
-                    className="w-full p-2 border border-green-300 rounded"
-                  />
-
 
                   <select
                     value={role}
@@ -704,13 +712,25 @@ const employee = () => {
                     <option value="HOD">HOD</option>
                   </select>
 
-                  <textarea
-                    value={address}
-                    onChange={e => setAddress(e.target.value)}
-                    placeholder="Address"
-                    rows={3}
+                  {/* CV Upload */}
+                  <label className="block font-medium">Upload CV (PDF)</label>
+                  {editingAdmin && typeof selectedCVFile === 'string' && (
+                    <a
+                      href={selectedCVFile}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline block mb-2"
+                    >
+                      View Uploaded CV
+                    </a>
+                  )}
+                  <input
+                    type="file"
+                    name="cv"
+                    onChange={e => setSelectedCVFile(e.target.files[0])}
+                    accept=".pdf"
                     className="w-full p-2 border border-green-300 rounded"
-                  ></textarea>
+                  />
 
                   {/* Profile Image Upload */}
                   <label className="block font-medium">Profile Image</label>
@@ -721,12 +741,67 @@ const employee = () => {
                       className="w-24 h-24 object-cover rounded-full mb-2"
                     />
                   )}
-
                   <input
                     type="file"
                     name="image"
                     onChange={e => setSelectedImageFile(e.target.files[0])}
                     accept="image/*"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+                </div>
+
+                {/* Payroll Information Column */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Payroll Information</h3>
+
+                  <input
+                    type="number"
+                    value={basicSalary}
+                    onChange={handleBasicSalaryChange}
+                    placeholder="Basic Salary (₦)"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
+                  <input
+                    type="number"
+                    value={overtimeRate}
+                    readOnly   // ✅ make it readonly so it's auto-filled
+                    placeholder="Overtime Rate per Hour (₦)"
+                    className="w-full p-2 border border-green-300 rounded bg-gray-100"
+                  />
+
+                  <input
+                    type="text"
+                    value={taxIdentificationNumber}
+                    onChange={e => setTaxIdentificationNumber(e.target.value)}
+                    placeholder="Tax Identification Number"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
+                  <select
+                    value={bankName}
+                    onChange={e => setBankName(e.target.value)}
+                    className="w-full p-2 border border-green-300 rounded"
+                  >
+                    <option value="">Select Bank</option>
+                    {nigerianBanks.map((bank, index) => (
+                      <option key={index} value={bank}>{bank}</option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="text"
+                    value={accountNumber}
+                    onChange={e => setAccountNumber(e.target.value)}
+                    placeholder="Account Number"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
+                  <input
+                    type="text"
+                    value={accountName}
+                    onChange={e => setAccountName(e.target.value)}
+                    placeholder="Account Name"
                     className="w-full p-2 border border-green-300 rounded"
                   />
                 </div>
@@ -743,14 +818,13 @@ const employee = () => {
               </div>
             </form>
           </div>
-        </div >
+        </div>
       )}
 
-
+      {/* The rest of your modal components remain the same */}
       {selectedEmployee && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 px-2">
           <div className="bg-white rounded-lg p-4 sm:p-6 max-w-3xl w-full shadow-xl relative max-h-[95vh] overflow-y-auto">
-
             {/* Close Button */}
             <button
               onClick={() => setSelectedEmployee(null)}
@@ -766,8 +840,6 @@ const employee = () => {
 
             {/* Profile Image */}
             <div className="mt-4 sm:mt-6 text-center">
-
-
               <img
                 src={selectedEmployee.userId?.profileImage}
                 alt="Profile"
@@ -794,6 +866,12 @@ const employee = () => {
                 { label: "Qualification", value: selectedEmployee.qualification },
                 { label: "Role", value: selectedEmployee.userId?.role },
                 { label: "Employee Type", value: selectedEmployee.type },
+                { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
+                { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
+                { label: "Tax ID", value: selectedEmployee.taxIdentificationNumber || 'Not provided' },
+                { label: "Bank Name", value: selectedEmployee.bankAccount?.bankName || 'Not provided' },
+                { label: "Account Number", value: selectedEmployee.bankAccount?.accountNumber || 'Not provided' },
+                { label: "Account Name", value: selectedEmployee.bankAccount?.accountName || 'Not provided' },
                 {
                   label: "Employee Status",
                   value: (
@@ -817,7 +895,6 @@ const employee = () => {
                     <span className="text-red-500">No CV uploaded</span>
                   ),
                 }
-
               ].map((item, index) => (
                 <div key={index} className="flex border-b py-2">
                   <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
@@ -829,7 +906,7 @@ const employee = () => {
         </div>
       )}
 
-
+      {/* Confirm Delete Modal and other modals remain the same */}
       {confirmDeleteId && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded shadow-md w-80">

@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 const loanSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   amount: { type: Number, required: true },
-  approvedAmount: { type: Number, default: "" },
+  approvedAmount: { type: Number, default: 0 },
   durationInMonths: { type: Number, required: true }, // E.g., 6 months
   monthDeduction: { type: Number },
   totalRepaid: { type: Number, default: 0 },
