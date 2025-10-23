@@ -707,7 +707,7 @@ const handleBasicSalaryChange = (e) => {
                     className="w-full p-2 border border-green-300 rounded"
                   >
                     <option value="">Select Role</option>
-                    <option value="admin">Admin</option>
+                    <option value="admin">HR</option>
                     <option value="employee">Employee</option>
                     <option value="HOD">HOD</option>
                   </select>
