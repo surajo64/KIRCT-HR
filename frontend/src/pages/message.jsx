@@ -9,7 +9,6 @@ const SendMessage = () => {
     useContext(AppContext);
 
   // State management
-  
   const [isLoading, setIsLoading] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyMessage, setReplyMessage] = useState("");
@@ -30,6 +29,15 @@ const SendMessage = () => {
   const itemsPerPage = 5;
   const [recipientsExpanded, setRecipientsExpanded] = useState(false);
 
+  // Debug state
+  const [debugInfo, setDebugInfo] = useState({
+    userId: null,
+    totalMessages: 0,
+    inboxCount: 0,
+    sentCount: 0,
+    unreadCount: 0
+  });
+
   // ✅ Fetch all users
   useEffect(() => {
     const fetchUsers = async () => {
@@ -49,37 +57,116 @@ const SendMessage = () => {
     fetchUsers();
   }, [token, backendUrl, user]);
 
- const { inboxMessages, sentMessages, unreadInboxMessages } = useMemo(() => {
-  const userIdStr = user?.id?.toString();
+  // ✅ FIXED: Improved message categorization with proper ID handling
+  const { inboxMessages, sentMessages, unreadInboxMessages } = useMemo(() => {
+ 
 
-  const inbox = (messages || []).filter((msg) => {
-    const isRecipient = msg.recipients?.some((r) => {
-      const rId = typeof r === "string" ? r : r._id?.toString();
-      return rId === userIdStr;
+    if (!messages || messages.length === 0) {
+
+      return { inboxMessages: [], sentMessages: [], unreadInboxMessages: [] };
+    }
+
+    // Get user ID - try multiple possible fields
+    const userId = user?.id || user?._id || user?.userId;
+    const userIdStr = userId?.toString();
+
+
+    if (!userIdStr) {
+      return { inboxMessages: [], sentMessages: [], unreadInboxMessages: [] };
+    }
+
+    // Helper function to normalize IDs for comparison
+    const normalizeId = (id) => {
+      if (!id) return null;
+      return id.toString ? id.toString() : String(id);
+    };
+
+    // Filter inbox messages (messages where user is a recipient)
+    const inbox = messages.filter((msg) => {
+      if (!msg.recipients || msg.recipients.length === 0) return false;
+
+      const isRecipient = msg.recipients.some(recipient => {
+        // Handle both populated user objects and raw IDs
+        const recipientId = recipient._id ? recipient._id : recipient;
+        const normalizedRecipientId = normalizeId(recipientId);
+        const isMatch = normalizedRecipientId === userIdStr;
+
+        if (isMatch) {
+      
+        }
+        return isMatch;
+      });
+
+      return isRecipient;
     });
-    return isRecipient;
-  });
 
-  const sent = (messages || []).filter((msg) => {
-    const createdById =
-      typeof msg.createdBy === "string"
-        ? msg.createdBy
-        : msg.createdBy?._id?.toString();
-    return createdById === userIdStr;
-  });
+    // Filter sent messages (messages where user is the creator)
+    const sent = messages.filter((msg) => {
+      if (!msg.createdBy) return false;
 
-  const unreadInbox = inbox.filter((msg) => {
-    const myReadStatus = msg.isRead?.find((r) => {
-      const rId =
-        typeof r.userId === "string" ? r.userId : r.userId?.toString();
-      return rId === userIdStr;
+      // Handle both populated user objects and raw IDs
+      const createdById = msg.createdBy._id ? msg.createdBy._id : msg.createdBy;
+      const normalizedCreatedById = normalizeId(createdById);
+      const isMatch = normalizedCreatedById === userIdStr;
+
+      if (isMatch) {
+      
+      }
+      return isMatch;
     });
-    return !myReadStatus || myReadStatus.read === false;
-  });
 
-  return { inboxMessages: inbox, sentMessages: sent, unreadInboxMessages: unreadInbox };
-}, [messages, user?.id]);
+    // Filter unread messages from inbox
+    const unreadInbox = inbox.filter((msg) => {
+      if (!msg.isRead || msg.isRead.length === 0) {
+       
+        return true;
+      }
 
+      const myReadStatus = msg.isRead.find(readStatus => {
+        const statusUserId = readStatus.userId?._id ?
+          readStatus.userId._id :
+          readStatus.userId;
+        const normalizedStatusUserId = normalizeId(statusUserId);
+        return normalizedStatusUserId === userIdStr;
+      });
+
+      const isUnread = !myReadStatus || myReadStatus.read === false;
+      if (isUnread) {
+       
+      }
+      return isUnread;
+    });
+
+    // Update debug info
+    const newDebugInfo = {
+      userId: userIdStr,
+      totalMessages: messages.length,
+      inboxCount: inbox.length,
+      sentCount: sent.length,
+      unreadCount: unreadInbox.length,
+      sampleMessages: messages.slice(0, 2).map(msg => ({
+        id: msg._id,
+        title: msg.title,
+        recipients: msg.recipients?.map(r => r._id || r),
+        createdBy: msg.createdBy?._id || msg.createdBy,
+        isRead: msg.isRead
+      }))
+    };
+
+    setDebugInfo(newDebugInfo);
+
+    console.log("📊 Final message counts:", {
+      inbox: inbox.length,
+      sent: sent.length,
+      unread: unreadInbox.length
+    });
+
+    return {
+      inboxMessages: inbox,
+      sentMessages: sent,
+      unreadInboxMessages: unreadInbox,
+    };
+  }, [messages, user?.id, user?._id, user?.userId]);
 
   // Apply search & tab filter
   useEffect(() => {
@@ -90,13 +177,15 @@ const SendMessage = () => {
       list = list.filter((m) =>
         m.title?.toLowerCase().includes(term) ||
         m.text?.toLowerCase().includes(term) ||
-        m.createdBy?.name?.toLowerCase().includes(term)
+        m.createdBy?.name?.toLowerCase().includes(term) ||
+        (activeTab === "sent" && m.recipients?.some(r =>
+          r.name?.toLowerCase().includes(term)
+        ))
       );
     }
 
     setFilteredMessages(list);
     setCurrentPage(1);
-   
   }, [activeTab, searchTerm, inboxMessages, sentMessages]);
 
   // Pagination
@@ -128,6 +217,7 @@ const SendMessage = () => {
     e.preventDefault();
     if (!selectedUsers.length || !message.trim()) {
       setStatus("Please select at least one user and type a message.");
+      setIsLoading(false);
       return;
     }
 
@@ -246,15 +336,17 @@ const SendMessage = () => {
     if (!recipients || recipients.length === 0) {
       return "Unknown";
     }
+
     if (recipients.length === 1) {
-      return recipients[0].name;
+      return recipients[0].name || "Unknown User";
     }
+
     if (recipientsExpanded) {
       return (
         <span>
           {recipients.map((u, idx) => (
             <span key={u._id || idx}>
-              {u.name}
+              {u.name || "Unknown User"}
               {idx < recipients.length - 1 ? ", " : ""}
             </span>
           ))}
@@ -271,16 +363,34 @@ const SendMessage = () => {
       const othersCount = recipients.length - 1;
       return (
         <span>
-          {<b>You!</b>} &{" "}
+          {recipients.length} {recipients.length === 1 ? 'recipient' : 'recipients'}
+          {" "}
           <button
             onClick={() => setRecipientsExpanded(true)}
             className="text-blue-600 text-xs underline"
           >
-            {othersCount} {othersCount === 1 ? "other" : "others"}
+            (show details)
           </button>
         </span>
       );
     }
+  };
+
+  // Check if message is unread for current user
+  const isMessageUnread = (message) => {
+    const userId = user?.id || user?._id || user?.userId;
+    const userIdStr = userId?.toString();
+
+    if (!userIdStr || !message.isRead) return true;
+
+    const myReadStatus = message.isRead.find(readStatus => {
+      const statusUserId = readStatus.userId?._id ?
+        readStatus.userId._id :
+        readStatus.userId;
+      return statusUserId?.toString() === userIdStr;
+    });
+
+    return !myReadStatus || myReadStatus.read === false;
   };
 
   // Pagination controls
@@ -339,7 +449,8 @@ const SendMessage = () => {
     );
   };
 
- if (!messages) return <LoadingOverlay />;
+
+  if (!messages) return <LoadingOverlay />;
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6">
@@ -356,6 +467,9 @@ const SendMessage = () => {
         <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
           <h3 className="text-gray-600 text-sm">Inbox Messages</h3>
           <p className="text-2xl font-bold">{inboxMessages.length}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {debugInfo.inboxCount === 0 ? "No messages found for user" : "Your received messages"}
+          </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
           <h3 className="text-gray-600 text-sm">Unread Messages</h3>
@@ -387,6 +501,19 @@ const SendMessage = () => {
           Sent {sentMessages.length > 0 && `(${sentMessages.length})`}
         </button>
       </div>
+
+      {/* Show warning if no messages found */}
+      {inboxMessages.length === 0 && sentMessages.length === 0 && messages.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">
+            <strong>Warning:</strong> You have {messages.length} total messages but none are categorized as inbox or sent.
+            This usually means there's a mismatch between your user ID and the message data.
+          </p>
+          <p className="text-sm text-red-600 mt-2">
+            Check the debug panel above for details. Your user ID: {debugInfo.userId}
+          </p>
+        </div>
+      )}
 
       {/* Search & Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -426,25 +553,16 @@ const SendMessage = () => {
         <div className="divide-y">
           {paginatedMessages.length > 0 ? (
             paginatedMessages.map((item, index) => {
-              const isRecipient = item.recipients?.some(
-                r => r._id?.toString() === user._id?.toString()
-              );
-              const isSender = item.createdBy?._id?.toString() === user._id?.toString();
-
-              const userId = user._id?.toString() || user.id?.toString();
-              const myReadStatus = item.isRead?.find(r => r.userId?.toString() === userId);
-              const isUnread = !myReadStatus || myReadStatus.read === false;
-
-              let dotColor = "bg-blue-500";
-              if (activeTab === "inbox") {
-                dotColor = isUnread ? "bg-red-500" : "bg-green-500";
-              }
+              const isUnread = activeTab === "inbox" && isMessageUnread(item);
+              const dotColor = activeTab === "inbox"
+                ? (isUnread ? "bg-red-500" : "bg-green-500")
+                : "bg-blue-500";
 
               return (
                 <div
                   key={item._id}
                   className={`grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_2fr_3fr_2fr_1.5fr] items-start sm:items-center py-4 px-6 hover:bg-blue-50 gap-3 transition-colors
-                    ${isUnread && activeTab === "inbox" ? "bg-blue-50" : ""}`}
+                    ${isUnread ? "bg-blue-50 font-medium" : ""}`}
                 >
                   {/* # + dot */}
                   <div className="flex items-center space-x-2">
@@ -462,19 +580,14 @@ const SendMessage = () => {
                         : renderRecipients(item.recipients)}
                     </p>
                     <div className="flex gap-1 mt-1">
-                      {isRecipient && activeTab === "inbox" && (
-                        <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded">
-                          Inbox
-                        </span>
-                      )}
-                      {isSender && activeTab === "sent" && (
-                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
-                          Sent
-                        </span>
-                      )}
-                      {isUnread && activeTab === "inbox" && (
+                      {isUnread && (
                         <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded">
                           Unread
+                        </span>
+                      )}
+                      {activeTab === "sent" && (
+                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
+                          Sent
                         </span>
                       )}
                     </div>
@@ -495,13 +608,13 @@ const SendMessage = () => {
                       onClick={() => handleViewMessage(item)}
                       className="bg-green-100 text-green-700 text-sm px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors flex items-center"
                     >
-                      <i className="fas fa-eye mr-1 text-xs"></i> View
+                      <span className="mr-1">👁️</span> View
                     </button>
                     <button
                       onClick={() => setConfirmDeleteId(item._id)}
                       className="bg-red-100 text-red-700 text-sm px-3 py-1.5 rounded-lg hover:bg-red-200 transition-colors flex items-center"
                     >
-                      <i className="fas fa-trash mr-1 text-xs"></i> Delete
+                      <span className="mr-1">🗑️</span> Delete
                     </button>
                   </div>
                 </div>
@@ -515,6 +628,14 @@ const SendMessage = () => {
                   ? "Your inbox is empty"
                   : "You haven't sent any messages yet"}
               </p>
+              {activeTab === "inbox" && (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Send Your First Message
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -523,6 +644,7 @@ const SendMessage = () => {
       {/* Pagination */}
       {renderPagination()}
 
+      {/* Rest of your modals remain the same */}
       {/* Send Form Modal */}
       {showForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -583,14 +705,14 @@ const SendMessage = () => {
                 placeholder="Title"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="border p-2 w-full mb-2 rounded"
+                className="border p-2 w-full mb-2 rounded" required
               />
 
               <textarea
                 placeholder="Type your message"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                className="border p-2 w-full mb-2 rounded"
+                className="border p-2 w-full mb-2 rounded" required
               />
 
               <button
@@ -603,6 +725,7 @@ const SendMessage = () => {
           </div>
         </div>
       )}
+
 
       {/* Read Message Modal */}
       {showRead && selectedMessage && (
