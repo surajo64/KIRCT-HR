@@ -49,44 +49,37 @@ const SendMessage = () => {
     fetchUsers();
   }, [token, backendUrl, user]);
 
-  const { inboxMessages, sentMessages, unreadInboxMessages } = useMemo(() => {
-    const userIdStr = user?.id?.toString();
+ const { inboxMessages, sentMessages, unreadInboxMessages } = useMemo(() => {
+  const userIdStr = user?.id?.toString();
 
-    const inbox = (messages || []).filter((msg) => {
-      // Handle recipients as populated or raw ObjectId
-      const isRecipient = msg.recipients?.some((r) => {
-        const rId = typeof r === "string" ? r : r._id?.toString();
-        return rId === userIdStr;
-      });
-
-      return isRecipient;
+  const inbox = (messages || []).filter((msg) => {
+    const isRecipient = msg.recipients?.some((r) => {
+      const rId = typeof r === "string" ? r : r._id?.toString();
+      return rId === userIdStr;
     });
+    return isRecipient;
+  });
 
-    const sent = (messages || []).filter((msg) => {
-      const createdById =
-        typeof msg.createdBy === "string"
-          ? msg.createdBy
-          : msg.createdBy?._id?.toString();
-      return createdById === userIdStr;
+  const sent = (messages || []).filter((msg) => {
+    const createdById =
+      typeof msg.createdBy === "string"
+        ? msg.createdBy
+        : msg.createdBy?._id?.toString();
+    return createdById === userIdStr;
+  });
+
+  const unreadInbox = inbox.filter((msg) => {
+    const myReadStatus = msg.isRead?.find((r) => {
+      const rId =
+        typeof r.userId === "string" ? r.userId : r.userId?.toString();
+      return rId === userIdStr;
     });
+    return !myReadStatus || myReadStatus.read === false;
+  });
 
-    const unreadInbox = inbox.filter((msg) => {
-      const myReadStatus = msg.isRead?.find((r) => {
-        const rId =
-          typeof r.userId === "string"
-            ? r.userId
-            : r.userId?.toString();
-        return rId === userIdStr;
-      });
-      return !myReadStatus || myReadStatus.read === false;
-    });
+  return { inboxMessages: inbox, sentMessages: sent, unreadInboxMessages: unreadInbox };
+}, [messages, user?.id]);
 
-    return {
-      inboxMessages: inbox,
-      sentMessages: sent,
-      unreadInboxMessages: unreadInbox,
-    };
-  }, [messages, user?.id]);
 
   // Apply search & tab filter
   useEffect(() => {
