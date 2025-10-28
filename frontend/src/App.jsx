@@ -36,6 +36,9 @@ import AccountDetailPage from './pages/account/accountDetail.jsx'
 import AllTransaction from './pages/account/all-transaction.jsx'
 import AllAccount from './pages/account/allAccount.jsx'
 import Payroll from './pages/account/Payroll.jsx'
+import AnnualBonus from './pages/account/YearEndPayroll.jsx'
+import OtherBonus from './pages/account/otherBonus.jsx'
+import EmployeeBonus from './pages/Bonus.jsx'
 
 const App = () => {
   const { token, setToken, setUser, user } = useContext(AppContext);
@@ -128,6 +131,8 @@ const App = () => {
               <Route path='/messages' element = {<SendMessage/>}/>
               <Route path='/account' element = {<Account/>}/>
               <Route path='/payroll' element = {<Payroll/>}/>
+              <Route path='/13-Months' element = {<AnnualBonus/>}/>
+              <Route path='/other-Months' element = {<OtherBonus/>}/>
               <Route path='/profile' element={<Profile />} />
               <Route path='/employee-leave' element={<EmployeeLeave />} />
               <Route path='/employee-loan' element={<EmployeeLoan />} />
@@ -141,6 +146,7 @@ const App = () => {
              <Route path="/account/:id" element={<AccountDetailPage />} />
              <Route path="/all-transactions" element={<AllTransaction />} />
              <Route path="/all-account" element={<AllAccount />} />
+             <Route path="/employee-bonus" element={<EmployeeBonus />} />
 
             </Routes>
           </div>

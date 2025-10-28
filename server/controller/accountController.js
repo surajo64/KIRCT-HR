@@ -10,6 +10,7 @@ import Payroll from '../models/Payroll.js';
 import Employee from '../models/Employee.js';
 import ExcelJS from 'exceljs'; // Add this import at the top
 import Loan from '../models/loan.js';
+import Bonus from '../models/BonusModel.js';
 
 
 
@@ -888,6 +889,631 @@ export const GetPayroll = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+
+
+
+// controllers/bonusController.js
+
+export const calculateAnnualBonus = async (req, res) => {
+  try {
+    const { year = new Date().getFullYear() } = req.body;
+    
+    const permanentEmployees = await Employee.find({ 
+      type: "permanent",
+      status: true 
+    }).populate('department', 'name');
+
+    if (!permanentEmployees.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No permanent employees found"
+      });
+    }
+
+    const bonusCalculations = [];
+    const errors = [];
+
+    for (const employee of permanentEmployees) {
+      try {
+        if (!employee.basicSalary || employee.basicSalary <= 0) {
+          errors.push({
+            staffId: employee.staffId,
+            name: employee.name,
+            error: "Basic salary not set or invalid"
+          });
+          continue;
+        }
+
+        const annualSalary = employee.basicSalary * 12;
+        const oneMonthBasic = employee.basicSalary;
+        const tenPercentAnnual = annualSalary * 0.1;
+        const totalBonus = oneMonthBasic + tenPercentAnnual;
+
+        const existingBonus = await Bonus.findOne({
+          employee: employee._id,
+          year
+        });
+
+        if (existingBonus) {
+          bonusCalculations.push({
+            ...existingBonus.toObject(),
+            isExisting: true
+          });
+        } else {
+          const bonusCalculation = {
+            employee: employee._id,
+            staffId: employee.staffId,
+            name: employee.name,
+            year,
+            basicSalary: employee.basicSalary,
+            annualSalary,
+            bonusCalculation: {
+              oneMonthBasic,
+              tenPercentAnnual,
+              totalBonus
+            },
+            department: employee.department?.name || "",
+            bankAccount: {
+              bankName: employee.bankAccount?.bankName || "",
+              accountNumber: employee.bankAccount?.accountNumber || "",
+              accountName: employee.bankAccount?.accountName || ""
+            },
+            status: "pending"
+          };
+
+          bonusCalculations.push(bonusCalculation);
+        }
+      } catch (error) {
+        errors.push({
+          staffId: employee.staffId,
+          name: employee.name,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: bonusCalculations,
+      errors,
+      summary: {
+        totalEmployees: permanentEmployees.length,
+        calculated: bonusCalculations.length,
+        errors: errors.length
+      }
+    });
+
+  } catch (error) {
+    console.error("Bonus calculation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to calculate bonuses",
+      error: error.message,
+      stack: error.stack
+    });
+  }
+};
+
+
+
+// Process and save bonus calculations
+export const processAnnualBonus = async (req, res) => {
+  try {
+    const { calculations, year = new Date().getFullYear() } = req.body;
+    console.log("Received calculations:", calculations?.[0]);
+
+    if (!calculations || !Array.isArray(calculations)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid calculations data",
+      });
+    }
+
+    const processedBonuses = [];
+    const errors = [];
+
+    for (const calc of calculations) {
+      try {
+        // ✅ Validate required fields
+        if (!calc.employee || !calc.staffId || !calc.basicSalary) {
+          errors.push({
+            staffId: calc.staffId,
+            error: "Missing required fields",
+          });
+          continue;
+        }
+
+        let bonusData = {
+          ...calc,
+          year,
+          type: "13 Month", // ✅ Always set to 13 Month
+          status: "processed", // ✅ Automatically mark as processed
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        let bonus;
+
+        // ✅ If record already exists, update it
+        if (calc._id) {
+          bonus = await Bonus.findByIdAndUpdate(calc._id, bonusData, { new: true });
+        } else {
+          // ✅ Otherwise, create a new bonus record
+          bonus = new Bonus(bonusData);
+          await bonus.save();
+        }
+
+        // ✅ Populate employee details
+        await bonus.populate("employee", "name staffId bankAccount department basicSalary");
+
+        processedBonuses.push(bonus);
+      } catch (error) {
+        errors.push({
+          staffId: calc.staffId,
+          error: error.message,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "13th Month bonuses processed successfully.",
+      data: processedBonuses,
+      errors,
+      summary: {
+        processed: processedBonuses.length,
+        errors: errors.length,
+      },
+    });
+  } catch (error) {
+    console.error("Bonus processing error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to process bonuses",
+      error: error.message,
+    });
+  }
+};
+
+
+// Get bonus history
+export const getBonusHistory = async (req, res) => {
+  try {
+    const { year, page = 1, limit = 20 } = req.query;
+    
+    const filter = {};
+    if (year) filter.year = parseInt(year);
+  
+
+    const bonuses = await Bonus.find(filter)
+      .populate('employee', 'name staffId department designation')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Bonus.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: bonuses,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error("Get bonus history error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch bonus history",
+      error: error.message
+    });
+  }
+};
+
+// Get bonus history
+export const getEmployeeBonusHistory = async (req, res) => {
+  try {
+    const bonuses = await Bonus.find()
+      .populate("employee", "name staffId userId department");
+
+    res.status(200).json({
+      success: true,
+      bonuses,
+    });
+  } catch (error) {
+    console.error("Get bonus history error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch bonus records",
+      error: error.message,
+    });
+  }
+};
+
+// Mark bonus as paid
+export const markBonusAsPaid = async (req, res) => {
+  try {
+    const { bonusIds, paymentDate, payrollReference } = req.body;
+
+    if (!bonusIds || !Array.isArray(bonusIds)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid bonus IDs"
+      });
+    }
+
+    const updateResult = await Bonus.updateMany(
+      { _id: { $in: bonusIds } },
+      {
+        status: "paid",
+        paymentDate: paymentDate || new Date(),
+        payrollReference: payrollReference,
+        processedAt: new Date(),
+        updatedAt: new Date()
+      }
+    );
+
+    const updatedBonuses = await Bonus.find({ _id: { $in: bonusIds } })
+      .populate('employee', 'name staffId department');
+
+    res.json({
+      success: true,
+      message: `Successfully marked ${updateResult.modifiedCount} bonuses as paid`,
+      data: updatedBonuses
+    });
+
+  } catch (error) {
+    console.error("Mark bonus as paid error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update bonus status",
+      error: error.message
+    });
+  }
+};
+
+// ✅ Export Annual Bonuses to Excel (Stable Version)
+export const exportBonusesToExcel = async (req, res) => {
+  try {
+    const { year } = req.params;
+
+    if (!year) {
+      return res.status(400).json({
+        success: false,
+        message: "Year parameter is required",
+      });
+    }
+
+    // ✅ Fetch bonuses for the given year with employee bank info
+    const bonuses = await Bonus.find({ year: parseInt(year) })
+      .populate({
+        path: "employee",
+        select: "name staffId department designation bankAccount",
+        populate: {
+          path: "department",
+          select: "name",
+        },
+      })
+      .lean();
+
+    if (!bonuses.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No bonus records found for year ${year}`,
+      });
+    }
+
+    // ✅ Create workbook & worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`Annual_Bonuses_${year}`);
+
+    // ✅ Define columns (same styling as payroll format)
+    worksheet.columns = [
+      { header: "S/N", key: "sn", width: 8 },
+      { header: "Staff ID", key: "staffId", width: 15 },
+      { header: "Employee Name", key: "name", width: 25 },
+      { header: "Department", key: "department", width: 20 },
+      { header: "Designation", key: "designation", width: 20 },
+      { header: "Bank Name", key: "bankName", width: 20 },
+      { header: "Account Number", key: "accountNumber", width: 20 },
+      { header: "Account Name", key: "accountName", width: 25 },
+      { header: "Basic Salary (₦)", key: "basicSalary", width: 18 },
+      { header: "Annual Salary (₦)", key: "annualSalary", width: 18 },
+      { header: "1-Month Basic Bonus (₦)", key: "oneMonthBasic", width: 22 },
+      { header: "10% Annual Bonus (₦)", key: "tenPercentAnnual", width: 22 },
+      { header: "Total Bonus (₦)", key: "totalBonus", width: 20 },
+      { header: "Status", key: "status", width: 15 },
+      { header: "Payment Date", key: "paymentDate", width: 20 },
+      { header: "Payroll Ref", key: "payrollReference", width: 20 },
+    ];
+
+    // ✅ Style header row
+    worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    worksheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF2E86AB" },
+    };
+    worksheet.getRow(1).alignment = { horizontal: "center" };
+
+    // ✅ Add data rows
+    bonuses.forEach((bonus, index) => {
+      const emp = bonus.employee || {};
+
+      worksheet.addRow({
+        sn: index + 1,
+        staffId: emp.staffId || "N/A",
+        name: emp.name || "Unknown Employee",
+        department: emp.department?.name || "N/A",
+        designation: emp.designation || "N/A",
+        bankName: emp.bankAccount?.bankName || "Not Provided",
+        accountNumber: emp.bankAccount?.accountNumber || "Not Provided",
+        accountName: emp.bankAccount?.accountName || "Not Provided",
+        basicSalary: bonus.basicSalary || 0,
+        annualSalary: bonus.annualSalary || 0,
+        oneMonthBasic: bonus.bonusCalculation?.oneMonthBasic || 0,
+        tenPercentAnnual: bonus.bonusCalculation?.tenPercentAnnual || 0,
+        totalBonus: bonus.bonusCalculation?.totalBonus || 0,
+        status: bonus.status || "Pending",
+        paymentDate: bonus.paymentDate
+          ? new Date(bonus.paymentDate).toLocaleDateString()
+          : "",
+        payrollReference: bonus.payrollReference || "",
+      });
+    });
+
+    // ✅ Numeric formatting (₦)
+    const currencyColumns = ["I", "J", "K", "L", "M"];
+    currencyColumns.forEach((col) => {
+      const column = worksheet.getColumn(col);
+      column.numFmt = '"₦"#,##0.00';
+      column.alignment = { horizontal: "right" };
+    });
+
+    // ✅ Center align specific columns
+    const centerColumns = ["A", "B", "N", "O"];
+    centerColumns.forEach((col) => {
+      worksheet.getColumn(col).alignment = { horizontal: "center" };
+    });
+
+    // ✅ Add total summary row
+    const lastRow = worksheet.rowCount;
+    const totalRow = worksheet.addRow({
+      sn: "",
+      staffId: "",
+      name: "TOTAL BONUS →",
+      totalBonus: { formula: `SUM(M2:M${lastRow})` },
+    });
+
+    totalRow.font = { bold: true };
+    totalRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF0F0F0" },
+    };
+    totalRow.getCell("M").numFmt = '"₦"#,##0.00';
+
+    // ✅ Proper headers for Excel stream
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Annual_Bonuses_${year}.xlsx`
+    );
+
+    // ✅ Write to buffer (no corruption)
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.send(buffer);
+
+    console.log(`✅ Bonus Excel generated for year ${year} with ${bonuses.length} rows`);
+  } catch (error) {
+    console.error("❌ Error exporting bonuses:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to export bonuses",
+      error: error.message,
+    });
+  }
+};
+
+// calculate other bonus
+export const calculateOtherBonus = async (req, res) => {
+  try {
+    const { year, type } = req.body;
+
+    if (!year || !type) {
+      return res.status(400).json({
+        success: false,
+        message: "Year and bonus type are required.",
+      });
+    }
+
+    // ✅ Fetch all active employees
+    const employees = await Employee.find({ status: "active" });
+
+    if (employees.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No active employees found.",
+      });
+    }
+
+    // ✅ Perform bonus calculations
+    const results = employees.map((emp) => {
+      const basicSalary = emp.basicSalary || 0;
+      const annualSalary = basicSalary * 12;
+
+      let oneMonthBasic = 0;
+      let tenPercentAnnual = 0;
+      let totalBonus = 0;
+
+      if (type === "Leave Allowance") {
+        tenPercentAnnual = annualSalary * 0.1;
+        totalBonus = tenPercentAnnual;
+      } 
+       else {
+        totalBonus = basicSalary * 0.05; // ✅ 5% default for “Others”
+      }
+
+      return {
+        employee: emp._id,
+        staffId: emp.staffId,
+        name: emp.name,
+        basicSalary,
+        annualSalary,
+        year,
+        type,
+        bonusCalculation: {
+          oneMonthBasic,
+          tenPercentAnnual,
+          totalBonus,
+        },
+        status: "pending",
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${type} bonuses calculated for ${results.length} employees.`,
+      data: results,
+    });
+  } catch (error) {
+    console.error("❌ calculateOtherBonus error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to calculate bonuses.",
+      error: error.message,
+    });
+  }
+};
+
+// process other bonus
+export const processOtherBonus = async (req, res) => {
+  try {
+    const { calculations, year, type } = req.body;
+
+    if (!calculations || calculations.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No bonus records provided.",
+      });
+    }
+
+    let saved = [];
+
+    for (const item of calculations) {
+      const existing = await Bonus.findOne({
+        staffId: item.staffId,
+        year,
+        type,
+      });
+
+      if (existing) {
+        // ✅ Update existing record
+        existing.bonusCalculation = item.bonusCalculation;
+        existing.basicSalary = item.basicSalary;
+        existing.annualSalary = item.annualSalary;
+        existing.status = "processed";
+        existing.processedAt = new Date();
+        await existing.save();
+        saved.push(existing);
+      } else {
+        // ✅ Create new record
+        const newBonus = new Bonus({
+          ...item,
+          status: "processed",
+          processedAt: new Date(),
+        });
+        await newBonus.save();
+        saved.push(newBonus);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `${saved.length} bonuses processed successfully.`,
+      data: saved,
+    });
+  } catch (error) {
+    console.error("❌ processOtherBonus error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to process bonuses.",
+      error: error.message,
+    });
+  }
+};
+
+// mark as paid
+export const markOtherBonusPaid = async (req, res) => {
+  try {
+    const { bonusIds, paymentDate, payrollReference, type } = req.body;
+
+    if (!bonusIds || bonusIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No bonus records selected.",
+      });
+    }
+
+    const bonuses = await Bonus.updateMany(
+      { _id: { $in: bonusIds } },
+      {
+        $set: {
+          status: "paid",
+          paymentDate,
+          payrollReference,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `${bonuses.modifiedCount} bonuses marked as paid.`,
+    });
+  } catch (error) {
+    console.error("❌ markOtherBonusPaid error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark bonuses as paid.",
+      error: error.message,
+    });
+  }
+};
+
+// get other bonus
+export const getOtherBonusHistory = async (req, res) => {
+  try {
+    const { year, type } = req.query;
+
+    const query = {};
+    if (year) query.year = year;
+    if (type) query.type = type;
+
+    const bonuses = await Bonus.find(query)
+      .populate("employee", "name staffId basicSalary")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: bonuses,
+    });
+  } catch (error) {
+    console.error("❌ getOtherBonusHistory error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch bonus history.",
+      error: error.message,
     });
   }
 };
