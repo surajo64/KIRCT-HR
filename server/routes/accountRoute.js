@@ -25,7 +25,8 @@ import {
   calculateOtherBonus,
   processOtherBonus,
   markOtherBonusPaid,
-  getOtherBonusHistory
+  getOtherBonusHistory,
+  
 } from '../controller/accountController.js';
 
 const accountRouter = express.Router();
@@ -70,6 +71,7 @@ accountRouter.post("/calculate-other-bonus",authUser, calculateOtherBonus);
 accountRouter.post("/process-other-bonus",authUser, processOtherBonus);
 accountRouter.put("/mark-other-bonus-paid",authUser, markOtherBonusPaid);
 accountRouter.get("/other-bonus-history",authUser, getOtherBonusHistory);
+
 
 
 

@@ -16,6 +16,25 @@ const OtherBonus = () => {
   const [payrollReference, setPayrollReference] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [selectedBonuses, setSelectedBonuses] = useState([]);
+  const [staffId, setStaffId] = useState("");
+  const [employees, setEmployees] = useState([]);
+
+  // Fetch employees list on component mount
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const { data } = await axios.get(`${backendUrl}/api/admin/get-all-employees`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (data.success) setEmployees(data.employees);
+        console.log(data.employees)
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to fetch employees.");
+      }
+    };
+    fetchEmployees();
+  }, [backendUrl, token]);
 
   // ✅ Calculate Other Bonuses
   const calculateBonuses = async () => {
@@ -25,7 +44,7 @@ const OtherBonus = () => {
     try {
       const { data } = await axios.post(
         `${backendUrl}/api/account/calculate-other-bonus`,
-        { year, type: bonusType },
+        { year, type: bonusType, staffId }, // ✅ Include staffId
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -47,6 +66,7 @@ const OtherBonus = () => {
       setIsLoading(false);
     }
   };
+
 
   // ✅ Search existing bonuses
   const handleSearchBonuses = async () => {
@@ -183,6 +203,21 @@ const OtherBonus = () => {
       {/* Inputs */}
       <div className="flex flex-col sm:flex-row sm:justify-center sm:items-center gap-4 mt-5">
         <select
+          value={staffId}
+          onChange={(e) => setStaffId(e.target.value)}
+          className="px-4 py-2 border rounded-md w-full sm:w-52 focus:ring-2 focus:ring-green-500"
+        >
+          <option value="">Select Staff</option>
+          {employees
+            .filter((emp) => emp.status === true) // ✅ only active/true status
+            .map((emp) => (
+              <option key={emp._id} value={emp.staffId}>
+                {emp.name} ({emp.staffId})
+              </option>
+            ))}
+        </select>
+
+        <select
           value={bonusType}
           onChange={(e) => setBonusType(e.target.value)}
           className="px-4 py-2 border rounded-md w-full sm:w-52 focus:ring-2 focus:ring-green-500"
@@ -243,9 +278,8 @@ const OtherBonus = () => {
               {calculations.map((calc) => (
                 <tr
                   key={calc._id || calc.staffId}
-                  className={`hover:bg-blue-50 cursor-pointer ${
-                    selectedBonuses.includes(calc._id) ? "bg-gray-100" : ""
-                  }`}
+                  className={`hover:bg-blue-50 cursor-pointer ${selectedBonuses.includes(calc._id) ? "bg-gray-100" : ""
+                    }`}
                   onClick={() => {
                     if (calc._id) {
                       setSelectedBonuses((prev) =>
@@ -284,12 +318,11 @@ const OtherBonus = () => {
                 calculations.length === 0 ||
                 calculations.every((calc) => calc.status !== "pending")
               }
-              className={`px-4 py-2 rounded-md text-white ${
-                calculations.length === 0 ||
+              className={`px-4 py-2 rounded-md text-white ${calculations.length === 0 ||
                 calculations.every((calc) => calc.status !== "pending")
-                  ? "bg-blue-300 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
+                ? "bg-blue-300 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+                }`}
             >
               Process Bonuses
             </button>
@@ -300,12 +333,11 @@ const OtherBonus = () => {
                 calculations.length === 0 ||
                 calculations.every((calc) => calc.status !== "processed")
               }
-              className={`px-4 py-2 rounded-md text-white ${
-                calculations.length === 0 ||
+              className={`px-4 py-2 rounded-md text-white ${calculations.length === 0 ||
                 calculations.every((calc) => calc.status !== "processed")
-                  ? "bg-green-300 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700"
-              }`}
+                ? "bg-green-300 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+                }`}
             >
               Mark as Paid
             </button>

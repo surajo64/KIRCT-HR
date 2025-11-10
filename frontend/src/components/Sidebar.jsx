@@ -14,9 +14,9 @@ const Sidebar = () => {
   const closeSidebar = () => setSidebarOpen(false);
 
   // Check if payroll menu should be open based on current route
-  const isPayrollActive = location.pathname.includes("/payroll") || 
-                         location.pathname.includes("/13-Months") || 
-                         location.pathname.includes("/other-Months");
+  const isPayrollActive = location.pathname.includes("/payroll") ||
+    location.pathname.includes("/13-Months") ||
+    location.pathname.includes("/other-Months");
 
   const SidebarLink = ({ to, label, icon, isSubmenu = false }) => (
     <li>
@@ -24,20 +24,19 @@ const Sidebar = () => {
         to={to}
         className={({ isActive }) =>
           `flex items-center gap-3 py-3.5 px-4 rounded-xl cursor-pointer transition-all duration-200 group
-          ${isActive 
-            ? "bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 font-semibold shadow-sm" 
+          ${isActive
+            ? "bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 font-semibold shadow-sm"
             : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:border-l-4 hover:border-gray-300"
           }
           ${isSubmenu ? "ml-2 text-sm" : ""}`
         }
         onClick={closeSidebar}
       >
-        <img 
-          src={icon} 
-          alt={label} 
-          className={`transition-transform duration-200 group-hover:scale-110 ${
-            isSubmenu ? "w-4 h-4" : "w-5 h-5"
-          }`} 
+        <img
+          src={icon}
+          alt={label}
+          className={`transition-transform duration-200 group-hover:scale-110 ${isSubmenu ? "w-4 h-4" : "w-5 h-5"
+            }`}
         />
         <span className={`${isSubmenu ? "text-sm" : ""}`}>{label}</span>
       </NavLink>
@@ -60,16 +59,16 @@ const Sidebar = () => {
       {/* Mobile Header with Toggle Button */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white border-b shadow-sm">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={toggleSidebar} 
+          <button
+            onClick={toggleSidebar}
             className="text-gray-600 hover:text-gray-900 transition-colors p-1 rounded-lg hover:bg-gray-100"
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <h1 className="text-lg font-semibold text-gray-800">
-            {user?.role === "admin" ? "Admin Panel" : 
-             user?.role === "employee" ? "Employee Portal" : 
-             user?.role === "HOD" ? "HOD Dashboard" : "Dashboard"}
+            {user?.role === "admin" ? "Admin Panel" :
+              user?.role === "employee" ? "Employee Portal" :
+                user?.role === "HOD" ? "HOD Dashboard" : "Dashboard"}
           </h1>
         </div>
         {user && (
@@ -86,7 +85,7 @@ const Sidebar = () => {
         className={`fixed z-50 inset-y-0 left-0 w-72 bg-white border-r border-gray-200 shadow-xl transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:shadow-none
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        
+
 
         {/* Navigation Content */}
         <div className="p-4 h-[calc(100vh-80px)] overflow-y-auto">
@@ -107,7 +106,7 @@ const Sidebar = () => {
                 <SidebarSection title="Finance">
                   <SidebarLink to="/loan" label="Loans" icon={assets.Salary} />
                   <SidebarLink to="/salary" label="Salaries" icon={assets.Salary} />
-                  
+
                   {/* Payroll & Bonus Dropdown */}
                   <li className="relative">
                     <button
@@ -120,10 +119,10 @@ const Sidebar = () => {
                         }`}
                     >
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={assets.Salary} 
-                          alt="Payroll" 
-                          className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" 
+                        <img
+                          src={assets.Salary}
+                          alt="Payroll"
+                          className="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                         />
                         <span>Payroll & Bonus</span>
                       </div>
@@ -139,7 +138,7 @@ const Sidebar = () => {
                       <ul className="ml-6 mt-1 flex flex-col space-y-1 border-l-2 border-gray-100 pl-4 transition-all duration-300">
                         <SidebarLink to="/payroll" label="Monthly Payroll" icon={assets.Salary} isSubmenu={true} />
                         <SidebarLink to="/13-Months" label="13th Month Payroll" icon={assets.Salary} isSubmenu={true} />
-                        <SidebarLink to="/other-Months" label="Annual Bonus" icon={assets.Salary} isSubmenu={true} />
+                        <SidebarLink to="/other-Months" label="Leave Allowance" icon={assets.Salary} isSubmenu={true} />
                       </ul>
                     )}
                   </li>
@@ -159,22 +158,7 @@ const Sidebar = () => {
               </>
             )}
 
-            {/* Employee Sidebar */}
-            {token && user?.role === "employee" && (
-              <>
-                <SidebarSection>
-                  <SidebarLink to="/employee-dashboard" label="Dashboard" icon={assets.Home} />
-                  <SidebarLink to="/profile" label="My Profile" icon={assets.Emplyees} />
-                  <SidebarLink to="/employee-leave" label="Leave Requests" icon={assets.Leave} />
-                  <SidebarLink to="/employee-loan" label="Loan Applications" icon={assets.Salary} />
-                  <SidebarLink to="/employee-salary" label="Salary Overview" icon={assets.Salary} />
-                   <SidebarLink to="/employee-bonus" label="Bonus Overview" icon={assets.Salary} />
-                  <SidebarLink to="/employee-kpi" label="My KPI" icon={assets.Evaluation} />
-                  <SidebarLink to="/messages" label="Messages" icon={assets.Department} />
-                  <SidebarLink to="/setting" label="Change Password" icon={assets.Setting} />
-                </SidebarSection>
-              </>
-            )}
+
 
             {/* HOD Sidebar */}
             {token && user?.role === "HOD" && (
@@ -193,6 +177,45 @@ const Sidebar = () => {
                 </SidebarSection>
               </>
             )}
+
+            {/* HR Employee Sidebar */}
+            {token && user?.role === "HREmployee" && (
+              <>
+                <SidebarSection>
+                  
+                  <SidebarLink to="/employee-dashboard" label="Dashboard" icon={assets.Home} />
+                  <SidebarLink to="/profile" label="My Profile" icon={assets.Emplyees} />
+                  <SidebarLink to="/employee" label="Employees" icon={assets.Emplyees} />
+                  <SidebarLink to="/department" label="Departments" icon={assets.Department} />
+                  <SidebarLink to="/attendence" label="Attendance" icon={assets.Attend} />
+                  <SidebarLink to="/employee-leave" label="Leave Requests" icon={assets.Leave} />
+                  <SidebarLink to="/employee-loan" label="Loan Applications" icon={assets.Salary} />
+                  <SidebarLink to="/employee-salary" label="Salary Overview" icon={assets.Salary} />
+                  <SidebarLink to="/employee-bonus" label="Bonus Overview" icon={assets.Salary} />
+                  <SidebarLink to="/employee-kpi" label="My KPI" icon={assets.Evaluation} />
+                  <SidebarLink to="/messages" label="Messages" icon={assets.Department} />
+                  <SidebarLink to="/setting" label="Change Password" icon={assets.Setting} />
+                </SidebarSection>
+              </>
+            )}
+
+            {/* Employee Sidebar */}
+            {token && user?.role === "employee" && (
+              <>
+                <SidebarSection>
+                  <SidebarLink to="/employee-dashboard" label="Dashboard" icon={assets.Home} />
+                  <SidebarLink to="/profile" label="My Profile" icon={assets.Emplyees} />
+                  <SidebarLink to="/employee-leave" label="Leave Requests" icon={assets.Leave} />
+                  <SidebarLink to="/employee-loan" label="Loan Applications" icon={assets.Salary} />
+                  <SidebarLink to="/employee-salary" label="Salary Overview" icon={assets.Salary} />
+                  <SidebarLink to="/employee-bonus" label="Bonus Overview" icon={assets.Salary} />
+                  <SidebarLink to="/employee-kpi" label="My KPI" icon={assets.Evaluation} />
+                  <SidebarLink to="/messages" label="Messages" icon={assets.Department} />
+                  <SidebarLink to="/setting" label="Change Password" icon={assets.Setting} />
+                </SidebarSection>
+              </>
+            )}
+
           </nav>
 
           {/* Logout Button */}

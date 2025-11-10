@@ -1325,29 +1325,32 @@ export const exportBonusesToExcel = async (req, res) => {
   }
 };
 
-// calculate other bonus
+
+// calculate bonus
 export const calculateOtherBonus = async (req, res) => {
   try {
-    const { year, type } = req.body;
+    const { year, type, staffId } = req.body;
 
-    if (!year || !type) {
-      return res.status(400).json({
-        success: false,
-        message: "Year and bonus type are required.",
-      });
+    if (!year || !type || !staffId) {
+      return res.status(400).json({ success: false, message: "Year and bonus type are required." });
     }
 
-    // ✅ Fetch all active employees
-    const employees = await Employee.find({ status: "active" });
+    let employees = [];
+
+    if (staffId) {
+      // ✅ Calculate bonus for a single employee
+      const emp = await Employee.findOne({ staffId, status: true });
+      if (!emp) return res.status(404).json({ success: false, message: "Employee not found." });
+      employees = [emp];
+    } else {
+      // ✅ Calculate bonus for all active employees
+      employees = await Employee.find({ status: true });
+    }
 
     if (employees.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No active employees found.",
-      });
+      return res.status(404).json({ success: false, message: "No employees found." });
     }
 
-    // ✅ Perform bonus calculations
     const results = employees.map((emp) => {
       const basicSalary = emp.basicSalary || 0;
       const annualSalary = basicSalary * 12;
@@ -1359,9 +1362,8 @@ export const calculateOtherBonus = async (req, res) => {
       if (type === "Leave Allowance") {
         tenPercentAnnual = annualSalary * 0.1;
         totalBonus = tenPercentAnnual;
-      } 
-       else {
-        totalBonus = basicSalary * 0.05; // ✅ 5% default for “Others”
+      } else {
+        totalBonus = basicSalary * 0.05;
       }
 
       return {
@@ -1372,29 +1374,18 @@ export const calculateOtherBonus = async (req, res) => {
         annualSalary,
         year,
         type,
-        bonusCalculation: {
-          oneMonthBasic,
-          tenPercentAnnual,
-          totalBonus,
-        },
+        bonusCalculation: { oneMonthBasic, tenPercentAnnual, totalBonus },
         status: "pending",
       };
     });
 
-    res.status(200).json({
-      success: true,
-      message: `${type} bonuses calculated for ${results.length} employees.`,
-      data: results,
-    });
+    res.status(200).json({ success: true, message: `${type} bonuses calculated for ${results.length} employee(s).`, data: results });
   } catch (error) {
     console.error("❌ calculateOtherBonus error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to calculate bonuses.",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Failed to calculate bonuses.", error: error.message });
   }
 };
+
 
 // process other bonus
 export const processOtherBonus = async (req, res) => {

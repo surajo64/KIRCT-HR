@@ -708,8 +708,10 @@ const handleBasicSalaryChange = (e) => {
                   >
                     <option value="">Select Role</option>
                     <option value="admin">HR</option>
-                    <option value="employee">Employee</option>
                     <option value="HOD">HOD</option>
+                    <option value="HREmployee">HR Employee</option>
+                    <option value="employee">Employee</option>
+                    
                   </select>
 
                   {/* CV Upload */}
