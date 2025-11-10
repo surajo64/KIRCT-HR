@@ -1332,60 +1332,65 @@ export const calculateOtherBonus = async (req, res) => {
     const { year, type, staffId } = req.body;
 
     if (!year || !type || !staffId) {
-      return res.status(400).json({ success: false, message: "Year and bonus type are required." });
+      return res.status(400).json({ success: false, message: "Year, bonus type, and staff ID are required." });
     }
 
-    let employees = [];
-
-    if (staffId) {
-      // ✅ Calculate bonus for a single employee
-      const emp = await Employee.findOne({ staffId, status: true });
-      if (!emp) return res.status(404).json({ success: false, message: "Employee not found." });
-      employees = [emp];
-    } else {
-      // ✅ Calculate bonus for all active employees
-      employees = await Employee.find({ status: true });
-    }
-
-    if (employees.length === 0) {
-      return res.status(404).json({ success: false, message: "No employees found." });
-    }
-
-    const results = employees.map((emp) => {
-      const basicSalary = emp.basicSalary || 0;
-      const annualSalary = basicSalary * 12;
-
-      let oneMonthBasic = 0;
-      let tenPercentAnnual = 0;
-      let totalBonus = 0;
-
-      if (type === "Leave Allowance") {
-        tenPercentAnnual = annualSalary * 0.1;
-        totalBonus = tenPercentAnnual;
-      } else {
-        totalBonus = basicSalary * 0.05;
-      }
-
-      return {
-        employee: emp._id,
-        staffId: emp.staffId,
-        name: emp.name,
-        basicSalary,
-        annualSalary,
+    // ✅ Only allow one Leave Allowance per year
+    if (type === "Leave Allowance") {
+      const existingBonus = await Bonus.findOne({
+        staffId,
+        type: "Leave Allowance",
         year,
-        type,
-        bonusCalculation: { oneMonthBasic, tenPercentAnnual, totalBonus },
-        status: "pending",
-      };
-    });
+      });
 
-    res.status(200).json({ success: true, message: `${type} bonuses calculated for ${results.length} employee(s).`, data: results });
+      if (existingBonus) {
+        return res.status(400).json({
+          success: false,
+          message: `Annual Leave Bonus has already been generated for this employee in ${year}.`,
+        });
+      }
+    }
+
+    // Fetch the employee
+    const emp = await Employee.findOne({ staffId, status: true });
+    if (!emp) return res.status(404).json({ success: false, message: "Employee not found." });
+
+    const basicSalary = emp.basicSalary || 0;
+    const annualSalary = basicSalary * 12;
+
+    let oneMonthBasic = 0;
+    let tenPercentAnnual = 0;
+    let totalBonus = 0;
+
+    if (type === "Leave Allowance") {
+      tenPercentAnnual = annualSalary * 0.1;
+      totalBonus = tenPercentAnnual;
+    } else {
+      totalBonus = basicSalary * 0.05;
+    }
+
+    const result = {
+      employee: emp._id,
+      staffId: emp.staffId,
+      name: emp.name,
+      basicSalary,
+      annualSalary,
+      year,
+      type,
+      bonusCalculation: { oneMonthBasic, tenPercentAnnual, totalBonus },
+      status: "pending",
+    };
+
+    res.status(200).json({
+      success: true,
+      message: `${type} bonus calculated for ${emp.name}.`,
+      data: [result],
+    });
   } catch (error) {
     console.error("❌ calculateOtherBonus error:", error);
-    res.status(500).json({ success: false, message: "Failed to calculate bonuses.", error: error.message });
+    res.status(500).json({ success: false, message: "Failed to calculate bonus.", error: error.message });
   }
 };
-
 
 // process other bonus
 export const processOtherBonus = async (req, res) => {
@@ -1482,14 +1487,15 @@ export const markOtherBonusPaid = async (req, res) => {
   }
 };
 
-// get other bonus
+/// ✅ Get Other Bonus (filtered by year, type, and staffId)
 export const getOtherBonusHistory = async (req, res) => {
   try {
-    const { year, type } = req.query;
+    const { year, type, staffId } = req.query; // 👈 include staffId
 
     const query = {};
     if (year) query.year = year;
     if (type) query.type = type;
+    if (staffId) query.staffId = staffId; // 👈 filter by staffId
 
     const bonuses = await Bonus.find(query)
       .populate("employee", "name staffId basicSalary")
@@ -1508,3 +1514,4 @@ export const getOtherBonusHistory = async (req, res) => {
     });
   }
 };
+
