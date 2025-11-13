@@ -360,11 +360,10 @@ export const AddPayroll = async (req, res) => {
     const { month, year, staffType } = req.body;
     if (!staffType) return res.status(400).json({ success: false, message: 'Staff type is required' });
 
-
     // Get only active employees of the selected type
-    const employees = await Employee.find({ 
-      status: true, 
-      type: staffType.toLowerCase() 
+    const employees = await Employee.find({
+      status: true,
+      type: staffType.toLowerCase()
     }).populate('userId', '_id');
 
     if (employees.length === 0) {
@@ -374,35 +373,35 @@ export const AddPayroll = async (req, res) => {
     const payrollsToInsert = [];
 
     for (const employee of employees) {
-      const existingPayroll = await Payroll.findOne({ 
-        employee: employee._id, 
-        month, 
-        year 
+      const existingPayroll = await Payroll.findOne({
+        employee: employee._id,
+        month,
+        year
       });
+
       if (existingPayroll) {
         console.log(`Skipping ${employee.name} - payroll already exists`);
         continue;
       }
 
-   
       // Get active loans for the employee
-      const activeLoans = await Loan.find({ 
+      const activeLoans = await Loan.find({
         userId: employee.userId._id,
         status: 'Approved'
       });
 
       // Filter loans that are not fully repaid and have valid monthly deductions
       const validActiveLoans = activeLoans.filter(loan => {
-        const approvedAmount = typeof loan.approvedAmount === 'string' 
-          ? parseFloat(loan.approvedAmount) || 0 
+        const approvedAmount = typeof loan.approvedAmount === 'string'
+          ? parseFloat(loan.approvedAmount) || 0
           : loan.approvedAmount || 0;
-        
+
         const totalRepaid = loan.totalRepaid || 0;
         const monthlyDeduction = loan.monthDeduction || 0;
-        
+
         const isNotFullyRepaid = totalRepaid < approvedAmount;
         const hasMonthlyDeduction = monthlyDeduction > 0;
-        
+
         return isNotFullyRepaid && hasMonthlyDeduction;
       });
 
@@ -411,80 +410,64 @@ export const AddPayroll = async (req, res) => {
         return sum + (loan.monthDeduction || 0);
       }, 0);
 
+      // Calculate salary components
       const basicSalary = employee.basicSalary || 0;
+      const annualRent = employee.rent || 0;
       const overtimeHours = 0;
+      const nonTaxPay = employee.nonTaxPay || 0;
       const overtimeRate = employee.overtimeRate || 0;
       const overtimeAmount = overtimeHours * overtimeRate;
-      
-      // ✅ UPDATED: Set transport allowance to 0 and meal allowance to 20% of basic
-      const transportAllowance = 0; // Set to 0 as requested
-      const mealAllowance = basicSalary * 0.20; // 20% of basic salary
-      
+      const transportAllowance = 0;
+      const mealAllowance = basicSalary * 0.20;
       const grossSalary = basicSalary + overtimeAmount + transportAllowance + mealAllowance;
 
-      // Initialize all fields with explicit values
+      // Initialize tax and pension variables
       let employerPension = 0;
       let employeePension = 0;
       let totalPension = 0;
       let payeTax = 0;
       let withholdingTax = 0;
-      let nonTaxPay = 0;
 
-      
 
-      // ✅ FIXED: Clear logic for employee types
-      if (employee.type === 'permanent') {        
-        // Calculate PENSION for permanent staff only
+      // Tax calculation based on staff type
+      if (staffType.toLowerCase() === "permanent") {
+        // Calculate PAYE Tax for permanent staff
+        payeTax = calculatePAYETax(grossSalary, basicSalary, annualRent);
+
+        // Calculate pension for permanent staff
         employerPension = basicSalary * 0.10;
         employeePension = basicSalary * 0.08;
         totalPension = employerPension + employeePension;
 
-        // Calculate PAYE TAX for permanent staff only
-        const taxableIncome = grossSalary - employeePension;
-        const annualTaxableIncome = taxableIncome * 12;
-        
-        // Nigerian PAYE tax brackets
-        if (annualTaxableIncome <= 300000) {
-          payeTax = annualTaxableIncome * 0.07;
-        } else if (annualTaxableIncome <= 600000) {
-          payeTax = 21000 + (annualTaxableIncome - 300000) * 0.11;
-        } else if (annualTaxableIncome <= 1100000) {
-          payeTax = 54000 + (annualTaxableIncome - 600000) * 0.15;
-        } else if (annualTaxableIncome <= 1600000) {
-          payeTax = 129000 + (annualTaxableIncome - 1100000) * 0.19;
-        } else if (annualTaxableIncome <= 3200000) {
-          payeTax = 224000 + (annualTaxableIncome - 1600000) * 0.21;
-        } else {
-          payeTax = 560000 + (annualTaxableIncome - 3200000) * 0.24;
-        }
-
-        payeTax = payeTax / 12;
-        withholdingTax = 0; // ✅ Explicitly set to 0 for permanent staff
-
+        // Permanent staff don't pay withholding tax
+        withholdingTax = 0;
       } else {
-
-        // ✅ Calculate WITHHOLDING TAX for non-permanent staff only (5% of gross)
+        // Calculate withholding tax for non-permanent staff (5%)
         withholdingTax = grossSalary * 0.05;
-        
-        // ✅ Explicitly set all other fields to 0 for non-permanent staff
+
+        // Non-permanent staff don't have pension or PAYE tax
+        payeTax = 0;
         employerPension = 0;
         employeePension = 0;
         totalPension = 0;
-        payeTax = 0; // ✅ CRITICAL: Set PAYE tax to 0 for non-permanent staff
       }
 
-      // Calculate total deductions and net salary
-      const totalDeductions = employeePension + payeTax + withholdingTax + totalLoanDeductions + nonTaxPay;
-      const netSalary = grossSalary - totalDeductions;
+      // Final rounding
+      payeTax = Number(payeTax.toFixed(2));
+      withholdingTax = Number(withholdingTax.toFixed(2));
 
-      // ✅ Create payroll object with ALL fields explicitly set
+      // Calculate total deductions and net salary
+      const totalDeductions = employeePension + payeTax + withholdingTax + totalLoanDeductions;
+      const netSalary = grossSalary - totalDeductions + nonTaxPay;
+
+      // Create payroll object
       const payrollData = {
         employee: employee._id,
         month: parseInt(month),
         year: parseInt(year),
         basicSalary: basicSalary,
-        transportAllowance: transportAllowance, // ✅ Set to 0
-        mealAllowance: mealAllowance, // ✅ Set to 20% of basic
+        transportAllowance: transportAllowance,
+        mealAllowance: mealAllowance,
         overtimeHours: overtimeHours,
         overtimeRate: overtimeRate,
         overtimeAmount: overtimeAmount,
@@ -493,8 +476,8 @@ export const AddPayroll = async (req, res) => {
         pension: totalPension,
         employerPension: employerPension,
         employeePension: employeePension,
-        payeTax: payeTax,                    // Should be 0 for non-permanent
-        withholdingTax: withholdingTax,       // Should be calculated for non-permanent
+        payeTax: payeTax,
+        withholdingTax: withholdingTax,
         nonTaxPay: nonTaxPay,
         totalDeductions: totalDeductions,
         netSalary: netSalary,
@@ -515,22 +498,16 @@ export const AddPayroll = async (req, res) => {
       return res.json({ success: false, message: 'No new payroll to generate for selected period' });
     }
 
-
-
     // Insert payroll records
     const createdPayrolls = await Payroll.insertMany(payrollsToInsert);
-    
-    const savedPayrolls = await Payroll.find({
-      _id: { $in: createdPayrolls.map(p => p._id) }
-    });
-    
-    await Payroll.populate(createdPayrolls, { 
-      path: 'employee', 
+
+    await Payroll.populate(createdPayrolls, {
+      path: 'employee',
       select: 'name staffId bankAccount department overtimeRate type userId',
       populate: [
-        { 
-          path: 'department', 
-          select: 'name' 
+        {
+          path: 'department',
+          select: 'name'
         },
         {
           path: 'userId',
@@ -539,10 +516,10 @@ export const AddPayroll = async (req, res) => {
       ]
     });
 
-    res.json({ 
-      success: true, 
-      message: `Payroll generated for ${createdPayrolls.length} employees`, 
-      data: createdPayrolls 
+    res.json({
+      success: true,
+      message: `Payroll generated for ${createdPayrolls.length} employees`,
+      data: createdPayrolls
     });
 
   } catch (error) {
@@ -551,74 +528,117 @@ export const AddPayroll = async (req, res) => {
   }
 };
 
+// Separate function for PAYE tax calculation (for better organization)
+const calculatePAYETax = (grossSalary, basicSalary, annualRent) => {
+  // Step 1: Compute Annual Gross Income
+  const annualGrossIncome = grossSalary * 12;
 
+  // Step 2: Annual Pension (employee contribution only for tax calculation)
+  const annualPension = (basicSalary * 0.08) * 12;
 
-// Update Payroll
-// Update Payroll
+  // Step 3: Compute CRA (Consolidated Relief Allowance)
+  const cra = Math.min(500000, 0.20 * annualRent);
+
+  // Step 4: Taxable Income
+  const taxableIncome = Math.max(annualGrossIncome - (annualPension + cra), 0);
+
+  // Step 5: Apply 2026 Nigerian PAYE Tax Bands
+  let totalTax = 0;
+  let remaining = taxableIncome;
+  console.log("initail reming:", remaining)
+  const taxBands = [
+    { limit: 800000, rate: 0.00 },
+    { limit: 3000000, rate: 0.15 },
+    { limit: 12000000, rate: 0.18 },
+    { limit: 25000000, rate: 0.21 },
+    { limit: 50000000, rate: 0.23 },
+    { limit: Infinity, rate: 0.25 }
+  ];
+
+  let previousLimit = 0;
+
+  for (const band of taxBands) {
+    if (remaining <= 0) break;
+
+    const bandAmount = Math.min(remaining, band.limit);
+    if (bandAmount > 0) {
+      totalTax += bandAmount * band.rate;
+    }
+
+    remaining -= bandAmount;
+
+    previousLimit = band.limit;
+  }
+
+  // Step 6: Convert annual tax to monthly
+  return totalTax / 12;
+
+};
+
 export const updatePayroll = async (req, res) => {
   try {
-    const { 
-      payrollId, 
-      overtimeHours, 
-      loanDeductions, 
-      nonTaxPay, 
+    const {
+      payrollId,
+      overtimeHours,
+      loanDeductions,
+      nonTaxPay,
       withholdingTax,
-      transportAllowance
-      
+      transportAllowance,
     } = req.body;
-
-    console.log('🔧 UPDATE PAYROLL REQUEST BODY:', req.body);
-    console.log('📦 Transport Allowance received:', transportAllowance);
 
     const payroll = await Payroll.findById(payrollId);
     if (!payroll) {
-      return res.status(404).json({ success: false, message: 'Payroll not found' });
+      return res.status(404).json({ success: false, message: "Payroll not found" });
     }
 
-    console.log('📊 Before update - Transport Allowance:', payroll.transportAllowance);
-
-    // Update fields
+    // 🔄 Update editable fields
     if (overtimeHours !== undefined) payroll.overtimeHours = parseFloat(overtimeHours) || 0;
     if (loanDeductions !== undefined) payroll.loanDeductions = parseFloat(loanDeductions) || 0;
     if (nonTaxPay !== undefined) payroll.nonTaxPay = parseFloat(nonTaxPay) || 0;
     if (withholdingTax !== undefined) payroll.withholdingTax = parseFloat(withholdingTax) || 0;
-    
-    // ✅ Update transport allowance
-    if (transportAllowance !== undefined) {
+    if (transportAllowance !== undefined)
       payroll.transportAllowance = parseFloat(transportAllowance) || 0;
-      console.log('✅ Transport Allowance updated to:', payroll.transportAllowance);
-    }
 
-    // Recalculate overtime amount
+    // ⚙️ Recalculate core values
     payroll.overtimeAmount = payroll.overtimeHours * payroll.overtimeRate;
-    
-    // Recalculate gross salary with allowances
-    payroll.grossSalary = payroll.basicSalary + payroll.overtimeAmount + payroll.transportAllowance + payroll.mealAllowance;
-    
-    // Recalculate net salary
-    const totalDeductions = payroll.employeePension + payroll.payeTax + payroll.withholdingTax + payroll.loanDeductions + payroll.nonTaxPay;
-    payroll.netSalary = payroll.grossSalary - totalDeductions;
+    payroll.grossSalary =
+      payroll.basicSalary +
+      payroll.overtimeAmount +
+      payroll.transportAllowance +
+      (payroll.mealAllowance || 0);
 
-    // Update total deductions field
+    // ✅ Get annualRent from Employee record
+    const employee = await Employee.findById(payroll.employee);
+    const annualRent = employee?.rent || 0;
+
+    // ✅ Recalculate PAYE using same logic
+    payroll.payeTax = calculatePAYETax(
+      payroll.grossSalary,
+      payroll.basicSalary,
+      annualRent
+    );
+
+    // ✅ Recalculate deductions & net
+    const totalDeductions =
+      payroll.payeTax + payroll.withholdingTax + payroll.loanDeductions + (payroll.employeePension || 0);
+
     payroll.totalDeductions = totalDeductions;
-
-    console.log('💰 After recalculation - Gross:', payroll.grossSalary, 'Net:', payroll.netSalary);
+    payroll.netSalary = payroll.grossSalary + payroll.nonTaxPay - totalDeductions;
 
     await payroll.save();
 
-    console.log('✅ Payroll saved successfully');
-
-    res.json({ 
-      success: true, 
-      message: 'Payroll updated successfully', 
-      data: payroll 
+    res.json({
+      success: true,
+      message: "Payroll updated successfully with correct PAYE",
+      data: payroll,
     });
-
   } catch (error) {
-    console.error('❌ Error updating payroll:', error);
+    console.error("❌ Error updating payroll:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 // Download Excel
 export const downloadExcel = async (req, res) => {
@@ -718,7 +738,7 @@ export const downloadExcel = async (req, res) => {
     // Add data rows with all fields from Payroll Schema
     payrolls.forEach((payroll, index) => {
       const employee = payroll.employee;
-      
+
       const rowData = {
         sn: index + 1,
         staffId: employee?.staffId || 'N/A',
@@ -895,22 +915,30 @@ export const GetPayroll = async (req, res) => {
 
 
 
-
 // controllers/bonusController.js
-
 export const calculateAnnualBonus = async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.body;
-    
-    const permanentEmployees = await Employee.find({ 
+
+    // ✅ Check only if 13 Month bonuses exist for this year (not other types)
+    const existing = await Bonus.findOne({ year, type: "13 Month" });
+    if (existing) {
+      return res.json({
+        success: false,
+        message: "Bonus for this year already exists.",
+      });
+    }
+
+    // ✅ Get only permanent, active employees
+    const permanentEmployees = await Employee.find({
       type: "permanent",
-      status: true 
-    }).populate('department', 'name');
+      status: true,
+    }).populate("department", "name");
 
     if (!permanentEmployees.length) {
       return res.status(404).json({
         success: false,
-        message: "No permanent employees found"
+        message: "No permanent employees found.",
       });
     }
 
@@ -923,81 +951,88 @@ export const calculateAnnualBonus = async (req, res) => {
           errors.push({
             staffId: employee.staffId,
             name: employee.name,
-            error: "Basic salary not set or invalid"
+            error: "Basic salary not set or invalid.",
           });
           continue;
         }
 
+        // ✅ Check if this employee already has a 13 Month bonus for this year
+        const existingEmployee13 = await Bonus.findOne({
+          employee: employee._id,
+          year,
+          type: "13 Month",
+        });
+
+        if (existingEmployee13) {
+          // Skip — already has 13 Month bonus
+          continue;
+        }
+
+        // ✅ Calculate 13th Month bonus
         const annualSalary = employee.basicSalary * 12;
         const oneMonthBasic = employee.basicSalary;
         const tenPercentAnnual = annualSalary * 0.1;
         const totalBonus = oneMonthBasic + tenPercentAnnual;
 
-        const existingBonus = await Bonus.findOne({
+        const bonusCalculation = {
           employee: employee._id,
-          year
-        });
+          staffId: employee.staffId,
+          name: employee.name,
+          year,
+          type: "13 Month", // Important flag
+          basicSalary: employee.basicSalary,
+          annualSalary,
+          bonusCalculation: {
+            oneMonthBasic,
+            tenPercentAnnual,
+            totalBonus,
+          },
+          department: employee.department?.name || "",
+          bankAccount: {
+            bankName: employee.bankAccount?.bankName || "",
+            accountNumber: employee.bankAccount?.accountNumber || "",
+            accountName: employee.bankAccount?.accountName || "",
+          },
+          status: "pending",
+        };
 
-        if (existingBonus) {
-          bonusCalculations.push({
-            ...existingBonus.toObject(),
-            isExisting: true
-          });
-        } else {
-          const bonusCalculation = {
-            employee: employee._id,
-            staffId: employee.staffId,
-            name: employee.name,
-            year,
-            basicSalary: employee.basicSalary,
-            annualSalary,
-            bonusCalculation: {
-              oneMonthBasic,
-              tenPercentAnnual,
-              totalBonus
-            },
-            department: employee.department?.name || "",
-            bankAccount: {
-              bankName: employee.bankAccount?.bankName || "",
-              accountNumber: employee.bankAccount?.accountNumber || "",
-              accountName: employee.bankAccount?.accountName || ""
-            },
-            status: "pending"
-          };
-
-          bonusCalculations.push(bonusCalculation);
-        }
+        bonusCalculations.push(bonusCalculation);
       } catch (error) {
         errors.push({
           staffId: employee.staffId,
           name: employee.name,
-          error: error.message
+          error: error.message,
         });
       }
     }
 
+    if (bonusCalculations.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `No new 13 Month bonuses generated. They may already exist for ${year}.`,
+      });
+    }
+
     res.json({
       success: true,
+      message: `13 Month bonuses calculated for ${bonusCalculations.length} employee(s) for ${year}.`,
       data: bonusCalculations,
       errors,
       summary: {
         totalEmployees: permanentEmployees.length,
         calculated: bonusCalculations.length,
-        errors: errors.length
-      }
+        errors: errors.length,
+      },
     });
-
   } catch (error) {
-    console.error("Bonus calculation error:", error);
+    console.error("❌ Bonus calculation error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to calculate bonuses",
+      message: "Failed to calculate bonuses.",
       error: error.message,
-      stack: error.stack
     });
   }
 };
-
 
 
 // Process and save bonus calculations
@@ -1048,7 +1083,10 @@ export const processAnnualBonus = async (req, res) => {
         }
 
         // ✅ Populate employee details
-        await bonus.populate("employee", "name staffId bankAccount department basicSalary");
+        await bonus.populate([
+          { path: "employee", select: "name staffId bankAccount basicSalary department designation", populate: { path: "department", select: "name designation" } }
+        ]);
+
 
         processedBonuses.push(bonus);
       } catch (error) {
@@ -1084,14 +1122,15 @@ export const processAnnualBonus = async (req, res) => {
 export const getBonusHistory = async (req, res) => {
   try {
     const { year, page = 1, limit = 20 } = req.query;
-    
+
     const filter = {};
     if (year) filter.year = parseInt(year);
-  
+
 
     const bonuses = await Bonus.find(filter)
-      .populate('employee', 'name staffId department designation')
-      .sort({ createdAt: -1 })
+      .populate([
+        { path: "employee", select: "name staffId department designation", populate: { path: "department", select: "name designation" } }
+      ]).sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
@@ -1121,7 +1160,10 @@ export const getBonusHistory = async (req, res) => {
 export const getEmployeeBonusHistory = async (req, res) => {
   try {
     const bonuses = await Bonus.find()
-      .populate("employee", "name staffId userId department");
+      .populate([
+        { path: "employee", select: "name staffId department designation", populate: { path: "department", select: "name designation" } }
+      ]);
+
 
     res.status(200).json({
       success: true,

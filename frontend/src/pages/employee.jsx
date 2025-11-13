@@ -46,6 +46,7 @@ const employee = () => {
   const [experience, setExperience] = useState('');
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [state, setState] = useState("");
+  const [rent, setRent] = useState("");
 
   // Payroll specific fields
   const [basicSalary, setBasicSalary] = useState('');
@@ -107,7 +108,7 @@ const employee = () => {
       setSalary(""); setPassword(""); setRole(""); setAddress(""); setPhone("");
       setSelectedImageFile(null); setState(""); setQualification(""); setExperience("");
       setSelectedCVFile(""); setSelectedImageFile(""); setJoinDate("");
-      setShowForm(false); setType("");
+      setShowForm(false); setType("");setRent("");
       // Reset payroll fields
       setBasicSalary(""); setOvertimeRate(""); setTaxIdentificationNumber("");
       setBankName(""); setAccountNumber(""); setAccountName("");
@@ -146,6 +147,7 @@ const employee = () => {
       setEmail(item.userId.email);
       setStaffId(item.staffId);
       setType(item.type);
+      setRent(item.rent);
       setRole(item.userId.role)
       const formattedjoinDate = new Date(item.joinDate).toISOString().split('T')[0];
       setJoinDate(formattedjoinDate)
@@ -222,6 +224,7 @@ const employee = () => {
     formData.append('phone', phone);
     formData.append('state', state);
     formData.append('type', type);
+    formData.append('rent', rent);
     formData.append('qualification', qualification);
     formData.append('experience', experience);
     formData.append("cv", selectedCVFile);
@@ -758,6 +761,14 @@ const handleBasicSalaryChange = (e) => {
 
                   <input
                     type="number"
+                    value={rent}
+                    onChange={e => setRent(e.target.value)}
+                    placeholder="Annual Rent Amount"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
+                  <input
+                    type="number"
                     value={basicSalary}
                     onChange={handleBasicSalaryChange}
                     placeholder="Basic Salary (₦)"
@@ -868,6 +879,7 @@ const handleBasicSalaryChange = (e) => {
                 { label: "Qualification", value: selectedEmployee.qualification },
                 { label: "Role", value: selectedEmployee.userId?.role },
                 { label: "Employee Type", value: selectedEmployee.type },
+                { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set'  },
                 { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
                 { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
                 { label: "Tax ID", value: selectedEmployee.taxIdentificationNumber || 'Not provided' },

@@ -490,7 +490,7 @@ const Payroll = () => {
                                     )}
 
                                     {/* Hide Pension, Loan, and NonTax for non-permanent staff */}
-                                    {staffType === 'permanent' && <TableHead title="Pension" />}
+                                    {staffType === 'permanent' && <TableHead title="T.Pension" />}
                                     {staffType === 'permanent' && <TableHead title="Loan" />}
                                     {staffType === 'permanent' && <TableHead title="NonTax" />}
                                     <TableHead title="Net" />
@@ -530,7 +530,7 @@ const Payroll = () => {
 
                                         {/* Hide Pension, Loan, and NonTax totals for non-permanent staff */}
                                         {staffType === 'permanent' && (
-                                            <td className="px-2 py-3 text-[11px] text-right">{formatCurrency(totals.pension)}</td>
+                                            <td className="px-2 py-3 text-[11px] text-right">{formatCurrency(totals.pension)}</td> 
                                         )}
                                         {staffType === 'permanent' && (
                                             <td className="px-2 py-3 text-[11px] text-right">{formatCurrency(totals.loanDeductions)}</td>

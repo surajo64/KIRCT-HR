@@ -19,6 +19,7 @@ const employeeSchema = new mongoose.Schema({
   state: { type: String, required: true },
   status: { type: Boolean, default: true },
   phone: { type: String, required: true },
+  rent: { type: String, required: true },
   cv: { type: String }, // 🆕 CV attachment
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

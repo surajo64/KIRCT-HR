@@ -39,14 +39,14 @@ const YearEndPayroll = () => {
             }
         } catch (error) {
             console.error(error);
-            toast.error("An error occurred while calculating bonuses.");
+            toast.error(error.message || "An error occurred while calculating bonuses.");
         } finally {
             setIsLoading(false);
         }
     };
 
 
-    // ✅ Process bonuses
+   
     // Process bonuses
     const handleProcessBonuses = async () => {
         setIsLoading(true);
@@ -59,9 +59,9 @@ const YearEndPayroll = () => {
                 basicSalary: b.basicSalary,
                 annualSalary: b.annualSalary || b.basicSalary * 12,
                 bonusCalculation: b.bonusCalculation || {
-                    oneMonthBasic: b.basicSalary,
-                    tenPercentAnnual: b.basicSalary * 12 * 0.1,
-                    totalBonus: b.basicSalary + b.basicSalary * 12 * 0.1
+                oneMonthBasic: b.basicSalary,
+                tenPercentAnnual: b.basicSalary * 12 * 0.1,
+                totalBonus: b.basicSalary + b.basicSalary * 12 * 0.1
                 },
                 status: "processed"
             }));
@@ -75,7 +75,7 @@ const YearEndPayroll = () => {
             if (data.success) {
                 toast.success("Bonuses processed successfully!");
                 setProcessDialog(false);
-                calculateBonuses(); // Refresh data
+                handleSearchBonuses(); // Refresh data
             } else {
                 toast.error(data.message);
             }
@@ -150,48 +150,58 @@ const YearEndPayroll = () => {
 
     // 🔹 Search Existing Bonuses by Year
     const handleSearchBonuses = async () => {
-        if (!year) return toast.warning("Please enter a year to search.");
-        setIsLoading(true);
-        try {
-            const { data } = await axios.get(
-                `${backendUrl}/api/account/history`,
-                {
-                    params: { year }, // ✅ send year as query param
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+  if (!year) return toast.warning("Please enter a year to search.");
+  setIsLoading(true);
+  try {
+    const { data } = await axios.get(
+      `${backendUrl}/api/account/history`,
+      {
+        params: { year }, // ✅ send year as query param
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
 
-            if (data.success && data.data.length > 0) {
-                const fetched = data.data.map((item) => ({
-                    _id: item._id,
-                    staffId: item.staffId || item.employee?.staffId,
-                    name: item.name || item.employee?.name,
-                    basicSalary: item.basicSalary || item.employee?.basicSalary,
-                    bonusCalculation: item.bonusCalculation,
-                    status: item.status,
-                }));
+    if (data.success && data.data.length > 0) {
+      // ✅ Filter only bonuses where type === "13 Month"
+      const filtered = data.data.filter(
+        (item) => item.type?.toLowerCase() === "13 month"
+      );
 
-                setCalculations(fetched);
+      if (filtered.length === 0) {
+        setCalculations([]);
+        toast.info("No 13 Month bonuses found for that year.");
+        return;
+      }
 
-                const total = fetched.reduce(
-                    (acc, calc) => acc + (calc.bonusCalculation?.totalBonus || 0),
-                    0
-                );
-                setTotalBonusAmount(total);
+      const fetched = filtered.map((item) => ({
+        _id: item._id,
+        staffId: item.staffId || item.employee?.staffId,
+        name: item.name || item.employee?.name,
+        basicSalary: item.basicSalary || item.employee?.basicSalary,
+        bonusCalculation: item.bonusCalculation,
+        status: item.status,
+      }));
 
-                toast.success(`Found ${fetched.length} processed bonuses for ${year}.`);
-            } else {
-                setCalculations([]);
-                toast.info("No processed bonuses found for that year.");
-            }
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to fetch bonuses.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+      setCalculations(fetched);
 
+      const total = fetched.reduce(
+        (acc, calc) => acc + (calc.bonusCalculation?.totalBonus || 0),
+        0
+      );
+      setTotalBonusAmount(total);
+
+    //  toast.success(`Found ${fetched.length} 13 Month bonuses for ${year}.`);
+    } else {
+      setCalculations([]);
+      toast.info("No processed bonuses found for that year.");
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to fetch bonuses.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
 

@@ -25,7 +25,7 @@ import axios from 'axios';
 const addEmployee = async (req, res) => {
   try {
     const {
-      name, email, phone, department,
+      name, email, phone, department,rent,
       designation, role, state,
       maritalStatus, dob, joinDate,
       gender, staffId, address, password,
@@ -88,6 +88,7 @@ const addEmployee = async (req, res) => {
       department,
       password: hashPassword,
       role,
+      rent,
       profileImage,
       phone,
       department,
@@ -142,7 +143,7 @@ const updateEmployee = async (req, res) => {
       employeeId,
       name, email, phone, department,
       designation, role, state,
-      maritalStatus, dob, type,
+      maritalStatus, dob, type,rent,
       gender, staffId, address, password,
       experience, qualification,
       // Payroll fields
@@ -223,6 +224,7 @@ const updateEmployee = async (req, res) => {
       state,
       maritalStatus,
       dob,
+      rent,
       type,
       gender,
       staffId: normalizedStaffId,

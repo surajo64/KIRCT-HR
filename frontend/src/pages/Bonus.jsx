@@ -374,7 +374,7 @@ useEffect(() => {
                                         <p><strong>Staff ID:</strong> {selectedBonusRecord.staffId}</p>
                                         <p><strong>Name:</strong> {selectedBonusRecord.name}</p>
                                         <p><strong>Department:</strong> {selectedBonusRecord.employee?.department?.name || 'N/A'}</p>
-                                        <p><strong>Designation:</strong> {selectedBonusRecord.employee?.designation || 'N/A'}</p>
+                                        <p><strong>Designation:</strong> {selectedBonusRecord.employee?.department.designation || 'N/A'}</p>
                                     </div>
                                 </div>
 
@@ -382,6 +382,7 @@ useEffect(() => {
                                     <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Payment Information</h3>
                                     <div className="space-y-2">
                                         <p><strong>Bonus Year:</strong> {selectedBonusRecord.year}</p>
+                                        <p><strong>Bonus Type:</strong> {selectedBonusRecord.type}</p>
                                         <p><strong>Payment Date:</strong> {new Date(selectedBonusRecord.paymentDate).toLocaleDateString()}</p>
                                         <p><strong>Status:</strong>
                                             <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${selectedBonusRecord.status === 'paid'
@@ -407,13 +408,6 @@ useEffect(() => {
                                     </div>
 
                                     <div className="flex justify-between items-center border-b pb-2">
-                                        <span className="text-gray-700">One Month Basic Salary:</span>
-                                        <span className="text-green-700 font-semibold">
-                                            ₦{(selectedBonusRecord.bonusCalculation?.oneMonthBasic || 0).toLocaleString()}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex justify-between items-center border-b pb-2">
                                         <span className="text-gray-700">Annual Salary (12 months):</span>
                                         <span className="text-green-700 font-semibold">₦{(selectedBonusRecord.annualSalary || 0).toLocaleString()}</span>
                                     </div>
@@ -426,7 +420,7 @@ useEffect(() => {
                                     </div>
 
                                     <div className="flex justify-between items-center pt-2 border-t-2 border-green-300">
-                                        <span className="text-lg font-bold text-gray-800">Total Bonus:</span>
+                                        <span className="text-lg font-bold text-gray-800">Net Bonus:</span>
                                         <span className="text-xl font-bold text-green-700">
                                             ₦{(selectedBonusRecord.bonusCalculation?.totalBonus || 0).toLocaleString()}
                                         </span>
