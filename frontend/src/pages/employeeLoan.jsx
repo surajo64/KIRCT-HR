@@ -388,7 +388,7 @@ const employeeLoan = () => {
                                     required
                                 >
                                     <option value="">-- Select Duration --</option>
-                                    {[3, 6, 9, 12, 18, 24, 36, 48, 60].map((m) => (
+                                    {[3, 6, 9, 12, 18, 24, 36].map((m) => (
                                         <option key={m} value={m}>
                                             {m} month{m > 1 && 's'}
                                         </option>

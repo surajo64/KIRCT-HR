@@ -115,6 +115,10 @@ const salary = () => {
     }) || []
     : [];
 
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 
 
@@ -140,101 +144,138 @@ const salary = () => {
         </button>
       </div>
 
-      {/* Table Container */}
-      {/* Table Container */}
-      <div className="bg-white rounded-md shadow-sm mt-6 text-sm max-h-[80vh] min-h-[60vh] overflow-y-auto">
-        {/* Table Header (only visible on sm and up) */}
-        <div className="bg-gray-200 hidden sm:grid grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] py-3 px-4 rounded-t-md border-b-4 border-green-500 font-semibold">
-          <p>#</p>
-          <p>Month</p>
-          <p>Year</p>
-          <p>Paid Date</p>
-          <p>Amount</p>
-          <p className="text-right pr-4">Actions</p>
-        </div>
+    
+     {/* Table Container */}
+<div className="bg-white rounded-md shadow-sm mt-6 text-sm max-h-[80vh] min-h-[60vh] overflow-y-auto">
 
-        {/* Records */}
-        {salaryGroups?.length > 0 ? (
-          salaryGroups
-            .filter((item) =>
-              `${item.month} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase())
-            )
-            .sort((a, b) => {
-              const monthOrder = [
-                'january', 'february', 'march', 'april', 'may', 'june',
-                'july', 'august', 'september', 'october', 'november', 'december'
-              ];
-              const monthA = monthOrder.indexOf(a.month.toLowerCase());
-              const monthB = monthOrder.indexOf(b.month.toLowerCase());
-              return b.year !== a.year ? b.year - a.year : monthB - monthA;
-            })
-            .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-            .map((item, index) => {
-              // Calculate total amount for this salary group
-              const totalAmount = item.records?.reduce((sum, salary) => sum + (salary.netSalary || 0), 0) || 0;
+  {/* Header */}
+  <div className="bg-gray-200 hidden sm:grid grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] py-3 px-4 rounded-t-md border-b-4 border-green-500 font-semibold">
+    <p>#</p>
+    <p>Month</p>
+    <p>Year</p>
+    <p>Paid Date</p>
+    <p>Amount</p>
+    <p className="text-right pr-4">Actions</p>
+  </div>
 
-              return (
-                <div
-                  key={index}
-                  className="flex flex-col sm:grid sm:grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] items-center text-sm text-gray-700 px-6 py-3 border-b hover:bg-blue-50"
-                >
-                  <p className="hidden sm:block">{(currentPage - 1) * itemsPerPage + index + 1}</p>
-                  <p>{item.month}</p>
-                  <p>{item.year}</p>
-                  <p>{new Date(item.payDate).toLocaleDateString()}</p>
-                  <p>₦{totalAmount.toLocaleString()}</p>
-                  <div className="flex justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                    <button
-                      onClick={() => handleView(item)}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1 rounded-full"
-                    >
-                      View Detail
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-        ) : (
-          <p className="text-center text-gray-500 py-8">No salary records found.</p>
-        )}
+  {/* Records */}
+  {salaryGroups?.length > 0 ? (
+    salaryGroups
+      .filter((item) => {
+        const monthNames = [
+          "January","February","March","April","May","June",
+          "July","August","September","October","November","December"
+        ];
+        const monthName = monthNames[item.month - 1];
 
-        {/* Pagination Controls */}
-        <div className="flex justify-center items-center mt-4 gap-4">
-          <button
-            disabled={currentPage === 1}
-            onClick={() => {
-              setIsLoading(true);
-              setTimeout(() => {
-                setCurrentPage((prev) => prev - 1)
-                setIsLoading(false);
-              }, 300);
-            }}
-            className={`px-4 py-1 rounded ${currentPage === 1 ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
+        return `${monthName} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      })
+      .sort((a, b) => {
+        // Sorting by year DESC, then month DESC
+        return b.year !== a.year
+          ? b.year - a.year
+          : b.month - a.month;
+      })
+      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+      .map((item, index) => {
+        const monthNames = [
+          "January","February","March","April","May","June",
+          "July","August","September","October","November","December"
+        ];
+        const monthName = monthNames[item.month - 1];
+
+        const totalAmount =
+          item.records?.reduce(
+            (sum, salary) => sum + (salary.netSalary || 0),
+            0
+          ) || 0;
+
+        return (
+          <div
+            key={index}
+            className="flex flex-col sm:grid sm:grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] items-center text-sm text-gray-700 px-6 py-3 border-b hover:bg-blue-50"
           >
-            Previous
-          </button>
-          <span className="text-gray-700 font-medium">Page {currentPage}</span>
-          <button
-            disabled={currentPage * itemsPerPage >= salaryGroups.filter((item) =>
-              `${item.month} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase())
-            ).length}
-            onClick={() => {
-              setIsLoading(true);
-              setTimeout(() => {
-                setCurrentPage((prev) => prev + 1)
-                setIsLoading(false);
-              }, 300);
-            }}
-            className={`px-4 py-1 rounded ${currentPage * itemsPerPage >= salaryGroups.length ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+            <p className="hidden sm:block">
+              {(currentPage - 1) * itemsPerPage + index + 1}
+            </p>
+
+            <p>{monthName}</p>
+            <p>{item.year}</p>
+            <p>{new Date(item.payDate).toLocaleDateString()}</p>
+            <p>₦{totalAmount.toLocaleString()}</p>
+
+            <div className="flex justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+              <button
+                onClick={() => handleView(item)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-4 py-1 rounded-full"
+              >
+                View Detail
+              </button>
+            </div>
+          </div>
+        );
+      })
+  ) : (
+    <p className="text-center text-gray-500 py-8">No salary records found.</p>
+  )}
+
+  {/* Pagination */}
+  <div className="flex justify-center items-center mt-4 gap-4">
+    <button
+      disabled={currentPage === 1}
+      onClick={() => {
+        setIsLoading(true);
+        setTimeout(() => {
+          setCurrentPage((prev) => prev - 1);
+          setIsLoading(false);
+        }, 300);
+      }}
+      className={`px-4 py-1 rounded ${
+        currentPage === 1
+          ? "bg-gray-300 cursor-not-allowed"
+          : "bg-green-500 text-white hover:bg-green-600"
+      }`}
+    >
+      Previous
+    </button>
+
+    <span className="text-gray-700 font-medium">Page {currentPage}</span>
+
+    <button
+      disabled={
+        currentPage * itemsPerPage >=
+        salaryGroups.filter((item) => {
+          const monthNames = [
+            "January","February","March","April","May","June",
+            "July","August","September","October","November","December"
+          ];
+          const monthName = monthNames[item.month - 1];
+
+          return `${monthName} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
+        }).length
+      }
+      onClick={() => {
+        setIsLoading(true);
+        setTimeout(() => {
+          setCurrentPage((prev) => prev + 1);
+          setIsLoading(false);
+        }, 300);
+      }}
+      className={`px-4 py-1 rounded ${
+        currentPage * itemsPerPage >= salaryGroups.length
+          ? "bg-gray-300 cursor-not-allowed"
+          : "bg-green-500 text-white hover:bg-green-600"
+      }`}
+    >
+      Next
+    </button>
+  </div>
+</div>
+
 
       {/* Form Modal */}
       {showForm && (
@@ -330,7 +371,7 @@ const salary = () => {
             <div id="print-salary-table" className="mt-4">
               {/* Header */}
               <h2 className="text-lg sm:text-xl font-bold text-gray-800 text-center mb-4">
-                Detailed Salaries for: {selectedSalaryRecords.month} {selectedSalaryRecords.year}
+                Detailed Salaries for: {monthNames[selectedSalaryRecords.month - 1]} {selectedSalaryRecords.year}
               </h2>
 
               {/* Table */}

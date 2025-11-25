@@ -1013,103 +1013,137 @@ const resumeLeave = async (req, res) => {
 
 
 // API to add salary using staffId lookup
+// API to add salary using staffId lookup
 const addSalary = async (req, res) => {
   try {
-    // ✅ Step 1: Download Excel from Cloudinary
+    // ----------------------------------------------------------
+    // 1️⃣ DOWNLOAD EXCEL FROM CLOUDINARY
+    // ----------------------------------------------------------
     const fileUrl = req.file.path;
-    const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+    const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
 
-    // ✅ Step 2: Parse Excel from buffer
-    const workbook = xlsx.read(response.data, { type: 'buffer' });
+    // ----------------------------------------------------------
+    // 2️⃣ PARSE EXCEL
+    // ----------------------------------------------------------
+    const workbook = xlsx.read(response.data, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = xlsx.utils.sheet_to_json(sheet);
 
-    // ✅ Step 3: Extract and validate month and year from Excel
-    let extractedMonth = null;
-    let extractedYear = null;
-
-    // Method 1: Check for Month and Year columns in the data
-    const firstRow = data[0] || {};
-    
-    // Check if Month and Year columns exist in the data
-    if (firstRow['Month'] && firstRow['Year']) {
-      extractedMonth = firstRow['Month'];
-      extractedYear = firstRow['Year'];
-    } 
-    // Method 2: Check for month and year in other column names
-    else {
-      for (const [key, value] of Object.entries(firstRow)) {
-        if (key.toLowerCase().includes('month') && value) {
-          extractedMonth = value;
-        }
-        if (key.toLowerCase().includes('year') && value) {
-          extractedYear = value;
-        }
-      }
-    }
-
-    // Method 3: Try to extract from filename as fallback
-    if (!extractedMonth || !extractedYear) {
-      const filename = req.file.originalname || '';
-      const monthYearMatch = filename.match(/(\d{1,2})[_-](\d{4})/);
-      if (monthYearMatch) {
-        extractedMonth = monthYearMatch[1];
-        extractedYear = monthYearMatch[2];
-      }
-    }
-
-    // ✅ Step 4: Validate month and year
-    if (!extractedMonth || !extractedYear) {
-      return res.status(400).json({ 
+    if (!data || data.length === 0) {
+      return res.status(400).json({
         success: false,
-        message: "❌ Month and year information not found in the Excel file. Please ensure the file contains Month and Year columns." 
+        message: "❌ Excel file is empty.",
       });
     }
 
-    // Convert month name to number if needed
+    // ----------------------------------------------------------
+    // 3️⃣ GET MONTH, YEAR, PAYDATE
+    // ----------------------------------------------------------
+    let extractedMonth = null;
+    let extractedYear = null;
+    let extractedPayDate = null;
+
+    const firstRow = data[0] || {};
+
+    console.log("🔍 Available columns in Excel:", Object.keys(firstRow));
+
+    // (A) Extract Month/Year/PayDate from columns - check various possible column names
+    if (firstRow["Month"]) extractedMonth = firstRow["Month"];
+    if (firstRow["Year"]) extractedYear = firstRow["Year"];
+    
+    // Check ALL possible payDate column names (case insensitive)
+    if (firstRow["PayDate"]) extractedPayDate = firstRow["PayDate"];
+    if (firstRow["payDate"]) extractedPayDate = firstRow["payDate"]; // lowercase 'p'
+    if (firstRow["Pay Date"]) extractedPayDate = firstRow["Pay Date"];
+    if (firstRow["Payment Date"]) extractedPayDate = firstRow["Payment Date"];
+    if (firstRow["Date"]) extractedPayDate = firstRow["Date"];
+
+    // (B) Search for columns containing month/year/paydate (case insensitive)
+    if (!extractedMonth || !extractedYear || !extractedPayDate) {
+      for (const [key, value] of Object.entries(firstRow)) {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes("month") && value && !extractedMonth) extractedMonth = value;
+        if (lowerKey.includes("year") && value && !extractedYear) extractedYear = value;
+        if ((lowerKey.includes("pay") || lowerKey.includes("date")) && value && !extractedPayDate) {
+          extractedPayDate = value;
+        }
+      }
+    }
+
+    // If payDate is still missing, throw error immediately
+    if (!extractedPayDate) {
+      return res.status(400).json({
+        success: false,
+        message: "❌ PayDate not found in Excel file. Please ensure the file contains a 'payDate' column with payment dates.",
+      });
+    }
+
+    // If month or year are missing, throw error
+    if (!extractedMonth || !extractedYear) {
+      return res.status(400).json({
+        success: false,
+        message: "❌ Month and Year not found in Excel. Ensure the file contains Month & Year columns.",
+      });
+    }
+
+    console.log(`📅 Extracted from Excel - Month: ${extractedMonth}, Year: ${extractedYear}, PayDate: ${extractedPayDate}`);
+
+    // ----------------------------------------------------------
+    // 4️⃣ VALIDATE MONTH
+    // ----------------------------------------------------------
     let monthNumber = extractedMonth;
+
     if (isNaN(extractedMonth)) {
       const monthNames = [
-        'january', 'february', 'march', 'april', 'may', 'june',
-        'july', 'august', 'september', 'october', 'november', 'december'
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december",
       ];
-      const monthIndex = monthNames.indexOf(extractedMonth.toString().toLowerCase());
-      if (monthIndex !== -1) {
-        monthNumber = monthIndex + 1;
+
+      const index = monthNames.indexOf(extractedMonth.toString().toLowerCase());
+      if (index !== -1) {
+        monthNumber = index + 1;
       } else {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          message: `❌ Invalid month format: ${extractedMonth}. Please use month names (January-December) or numbers (1-12).` 
+          message: `❌ Invalid month: ${extractedMonth}.`,
         });
       }
     }
 
-    // Validate month range
     monthNumber = parseInt(monthNumber);
     if (monthNumber < 1 || monthNumber > 12) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: `❌ Invalid month: ${monthNumber}. Month must be between 1 and 12.` 
+        message: `❌ Invalid month number: ${monthNumber}.`,
       });
     }
 
-    // Validate year
+    // ----------------------------------------------------------
+    // 5️⃣ VALIDATE YEAR
+    // ----------------------------------------------------------
     const yearNumber = parseInt(extractedYear);
     const currentYear = new Date().getFullYear();
+
     if (yearNumber < 2000 || yearNumber > currentYear + 1) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: `❌ Invalid year: ${yearNumber}. Year must be between 2000 and ${currentYear + 1}.` 
+        message: `❌ Invalid year: ${yearNumber}.`,
       });
     }
 
-    console.log(`📅 Extracted payroll period: Month ${monthNumber}, Year ${yearNumber}`);
-
+    // ----------------------------------------------------------
+    // 6️⃣ VALIDATE PAYDATE FOR EACH ROW
+    // ----------------------------------------------------------
     const salaryData = [];
+    let hasInvalidPayDate = false;
+    const invalidPayDateRows = [];
 
-    for (const row of data) {
+    for (const [index, row] of data.entries()) {
       const staffId = (row["Staff ID"] || "").trim().toLowerCase();
-      if (!staffId) continue;
+      if (!staffId) {
+        console.log(`⚠️ Skipping row ${index + 1}: No Staff ID`);
+        continue;
+      }
 
       const employee = await Employee.findOne({ staffId });
       if (!employee) {
@@ -1117,25 +1151,72 @@ const addSalary = async (req, res) => {
         continue;
       }
 
-      // Check if salary already exists for this employee and period
-      const existingSalary = await Salary.findOne({
+      // Check for PayDate in individual row - check ALL possible column names
+      let rowPayDate = null;
+      
+      // Check all possible payDate column names
+      if (row["PayDate"]) rowPayDate = row["PayDate"];
+      if (row["payDate"]) rowPayDate = row["payDate"]; // lowercase 'p'
+      if (row["Pay Date"]) rowPayDate = row["Pay Date"];
+      if (row["Payment Date"]) rowPayDate = row["Payment Date"];
+      if (row["Date"]) rowPayDate = row["Date"];
+
+      // If still not found, search case insensitive
+      if (!rowPayDate) {
+        for (const [key, value] of Object.entries(row)) {
+          if (key.toLowerCase().includes("pay") || key.toLowerCase().includes("date")) {
+            rowPayDate = value;
+            break;
+          }
+        }
+      }
+
+      // Validate payDate - if missing or invalid, skip this row
+      if (!rowPayDate) {
+        console.log(`❌ Row ${index + 1}: PayDate missing for staff ${staffId}`);
+        hasInvalidPayDate = true;
+        invalidPayDateRows.push({ row: index + 1, staffId, reason: "PayDate missing" });
+        continue;
+      }
+
+      // Parse the date (handles DD/MM/YYYY format)
+      let parsedDate = parseDate(rowPayDate);
+      
+      if (!parsedDate || isNaN(parsedDate)) {
+        console.log(`❌ Row ${index + 1}: Invalid PayDate format '${rowPayDate}' for staff ${staffId}`);
+        hasInvalidPayDate = true;
+        invalidPayDateRows.push({ row: index + 1, staffId, reason: `Invalid date format: ${rowPayDate}` });
+        continue;
+      }
+
+      // Prevent duplicate salary
+      const exists = await Salary.findOne({
         employeeId: employee._id,
         month: monthNumber,
-        year: yearNumber
+        year: yearNumber,
       });
 
-      if (existingSalary) {
-        console.log(`⚠️ Salary already exists for ${staffId} for ${monthNumber}/${yearNumber}`);
+      if (exists) {
+        console.log(`⚠️ Salary already exists for ${staffId} - ${monthNumber}/${yearNumber}`);
         continue;
       }
 
       const loanDeduction = Number(row["Loan Deductions (₦)"]) || 0;
-      const activeLoan = await Loan.findOne({ userId: employee.userId, status: "Approved" });
+      const activeLoan = await Loan.findOne({
+        userId: employee.userId,
+        status: "Approved",
+      });
 
       if (activeLoan && loanDeduction > 0) {
-        const repayment = Math.min(loanDeduction, activeLoan.amount - activeLoan.totalRepaid);
+        const repayment = Math.min(
+          loanDeduction,
+          activeLoan.amount - activeLoan.totalRepaid
+        );
         activeLoan.totalRepaid += repayment;
-        if (activeLoan.totalRepaid >= activeLoan.amount) activeLoan.status = "Completed";
+
+        if (activeLoan.totalRepaid >= activeLoan.amount)
+          activeLoan.status = "Completed";
+
         await activeLoan.save();
       }
 
@@ -1159,41 +1240,80 @@ const addSalary = async (req, res) => {
         growthSalary: Number(row["Gross Salary (₦)"]) || 0,
         month: monthNumber,
         year: yearNumber,
-        payDate: new Date(),
+        payDate: parsedDate, // Use the validated payDate
         status: row["Status"] || "Pending",
       });
     }
 
+    // ----------------------------------------------------------
+    // 7️⃣ CHECK IF ANY VALID DATA REMAINS
+    // ----------------------------------------------------------
     if (salaryData.length === 0) {
-      return res.status(400).json({ 
+      if (hasInvalidPayDate) {
+        return res.status(400).json({
+          success: false,
+          message: "❌ No valid salary data found. All rows have missing or invalid PayDate.",
+          invalidRows: invalidPayDateRows
+        });
+      }
+      return res.status(400).json({
         success: false,
-        message: "❌ No valid salary entries found or all entries already exist for the specified period." 
+        message: "❌ No valid salary rows found or all salaries already exist for the period.",
       });
     }
 
-    // Insert salary data
+    // ----------------------------------------------------------
+    // 8️⃣ SAVE ALL SALARIES
+    // ----------------------------------------------------------
     await Salary.insertMany(salaryData);
-    
-    res.status(200).json({
+
+    let responseMessage = `✅ Salary data uploaded for ${getMonthName(monthNumber)} ${yearNumber}.`;
+    if (hasInvalidPayDate) {
+      responseMessage += ` ${invalidPayDateRows.length} rows skipped due to invalid PayDate.`;
+    }
+
+    return res.status(200).json({
       success: true,
-      message: `✅ Salary data for ${getMonthName(monthNumber)} ${yearNumber} uploaded successfully`,
+      message: responseMessage,
       count: salaryData.length,
       period: {
         month: monthNumber,
         monthName: getMonthName(monthNumber),
-        year: yearNumber
-      }
+        year: yearNumber,
+      },
+      skippedRows: hasInvalidPayDate ? invalidPayDateRows : undefined
     });
-
   } catch (err) {
     console.error("❌ Error uploading salary:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to upload salary data",
       error: err.message,
     });
   }
 };
+
+// Helper function to parse date in DD/MM/YYYY format
+function parseDate(dateString) {
+  if (!dateString) return null;
+  
+  // Handle DD/MM/YYYY format (common in Excel)
+  const parts = dateString.toString().split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1; // Months are 0-indexed in JS
+    const year = parseInt(parts[2]);
+    
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      const date = new Date(year, month, day);
+      return !isNaN(date) ? date : null;
+    }
+  }
+  
+  // Fallback to native Date parsing
+  const date = new Date(dateString);
+  return !isNaN(date) ? date : null;
+}
 
 // Helper function to get month name
 function getMonthName(monthNumber) {

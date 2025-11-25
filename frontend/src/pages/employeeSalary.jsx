@@ -19,7 +19,10 @@ const employeeSalary = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
   const handleView = (group) => {
     setIsLoading(true);
     setTimeout(() => {
@@ -186,108 +189,140 @@ const employeeSalary = () => {
           className="w-full sm:w-1/2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
         />
       </div>
+{/* Salary Table */}
+<div className="bg-white rounded-md shadow-sm mt-6 text-sm max-h-[80vh] min-h-[60vh] overflow-y-auto">
 
-      {/* Salary Table */}
-      <div className="bg-white rounded-md shadow-sm mt-6 text-sm max-h-[80vh] min-h-[60vh] overflow-y-auto">
-        {/* Table Header (only visible on sm and up) */}
-        <div className="bg-gray-200 hidden sm:grid grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] py-3 px-4 rounded-t-md border-b-4 border-green-500 font-semibold">
-          <p>#</p>
-          <p>Salary Month</p>
-          <p>Salary Year</p>
-          <p>Paid Date</p>
-          <p>Amount Paid</p>
-          <p>Actions</p>
-        </div>
+  {/* Table Header */}
+  <div className="bg-gray-200 hidden sm:grid grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] py-3 px-4 rounded-t-md border-b-4 border-green-500 font-semibold">
+    <p>#</p>
+    <p>Salary Month</p>
+    <p>Salary Year</p>
+    <p>Paid Date</p>
+    <p>Amount Paid</p>
+    <p className="text-right">Actions</p>
+  </div>
 
-        {/* Table Rows */}
-        {salaryGroups?.length > 0 ? (
-          salaryGroups
-            .filter((item) =>
-              `${item.month} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .sort((a, b) => {
-              const monthOrder = [
-                'january', 'february', 'march', 'april', 'may', 'june',
-                'july', 'august', 'september', 'october', 'november', 'december'
-              ];
-              const monthA = monthOrder.indexOf(a.month.toLowerCase());
-              const monthB = monthOrder.indexOf(b.month.toLowerCase());
+  {/* Table Rows */}
+  {salaryGroups?.length > 0 ? (
+    salaryGroups
+      .filter((item) => {
+        const monthNames = [
+          "January","February","March","April","May","June",
+          "July","August","September","October","November","December"
+        ];
+        const monthName = monthNames[item.month - 1];
 
-              return a.year !== b.year ? b.year - a.year : monthB - monthA;
-            })
-            .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-            .map((item, index) => (
-              <div
-                key={index}
-                className="flex flex-wrap sm:grid sm:grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] items-center gap-4 sm:gap-0 py-3 px-4 border-b hover:bg-blue-50 text-gray-600"
+        return `${monthName} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      })
+      .sort((a, b) => {
+        return b.year !== a.year ? b.year - a.year : b.month - a.month;
+      })
+      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+      .map((item, index) => {
+        const monthNames = [
+          "January","February","March","April","May","June",
+          "July","August","September","October","November","December"
+        ];
+        const monthName = monthNames[item.month - 1];
+
+        return (
+          <div
+            key={index}
+            className="flex flex-wrap sm:grid sm:grid-cols-[0.5fr_1fr_1fr_1fr_1fr_2fr] items-center gap-4 sm:gap-0 py-3 px-4 border-b hover:bg-blue-50 text-gray-600"
+          >
+            <p>{(currentPage - 1) * itemsPerPage + index + 1}</p>
+
+            <p>{monthName}</p>
+            <p>{item.year}</p>
+            <p>{new Date(item.payDate).toLocaleDateString()}</p>
+
+            <p>₦{item.netPay?.toLocaleString()}</p>
+
+            <div className="flex gap-2 justify-start sm:justify-end flex-wrap">
+              <button
+                onClick={() => handleView(item)}
+                className="bg-yellow-500 text-white text-sm px-3 py-1 rounded-full"
               >
-                <p>{(currentPage - 1) * itemsPerPage + index + 1}</p>
-                <p>{item.month}</p>
-                <p>{item.year}</p>
-                <p>{new Date(item.payDate).toLocaleDateString()}</p>
-                <p>₦{item.netPay.toLocaleString()}</p>
-                <div className="flex gap-2 justify-start sm:justify-end flex-wrap">
-                  <button
-                    onClick={() => handleView(item)}
-                    className="bg-yellow-500 text-white text-sm px-3 py-1 rounded-full"
-                  >
-                    View Detail
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsLoading(true);
-                      setTimeout(() => {
-                        handlePrintSlip(item)
-                        setIsLoading(false);
-                      }, 300);
-                    }}
-                    className="bg-blue-600 text-white text-sm px-3 py-1 rounded-full"
-                  >
-                    Pay Slip
-                  </button>
-                </div>
-              </div>
-            ))
-        ) : (
-          <p className="text-center text-gray-500 py-6">No salary records found.</p>
-        )}
+                View Detail
+              </button>
 
-        {/* Pagination Controls */}
-        <div className="flex justify-center items-center mt-4 gap-4">
-          <button
-            disabled={currentPage === 1}
-            onClick={() => {
-              setIsLoading(true);
-              setTimeout(() => {
-                setCurrentPage((prev) => prev - 1)
-                setIsLoading(false);
-              }, 300);
-            }}
-            className={`px-4 py-1 rounded ${currentPage === 1 ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
-          >
-            Previous
-          </button>
-          <span className="text-gray-700 font-medium">Page {currentPage}</span>
-          <button
-            disabled={currentPage * itemsPerPage >= salaryGroups.filter((item) =>
-              `${item.month} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase())
-            ).length}
-            onClick={() => {
-              setIsLoading(true);
-              setTimeout(() => {
-                setCurrentPage((prev) => prev + 1)
-                setIsLoading(false);
-              }, 300);
-            }}
-            className={`px-4 py-1 rounded ${currentPage * itemsPerPage >= salaryGroups.length ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-500 text-white hover:bg-green-600'}`}
-          >
-            Next
-          </button>
-        </div>
+              <button
+                onClick={() => {
+                  setIsLoading(true);
+                  setTimeout(() => {
+                    handlePrintSlip(item);
+                    setIsLoading(false);
+                  }, 300);
+                }}
+                className="bg-blue-600 text-white text-sm px-3 py-1 rounded-full"
+              >
+                Pay Slip
+              </button>
+            </div>
+          </div>
+        );
+      })
+  ) : (
+    <p className="text-center text-gray-500 py-6">No salary records found.</p>
+  )}
 
-      </div>
+  {/* Pagination Controls */}
+  <div className="flex justify-center items-center mt-4 gap-4">
+    <button
+      disabled={currentPage === 1}
+      onClick={() => {
+        setIsLoading(true);
+        setTimeout(() => {
+          setCurrentPage((prev) => prev - 1);
+          setIsLoading(false);
+        }, 300);
+      }}
+      className={`px-4 py-1 rounded ${
+        currentPage === 1
+          ? "bg-gray-300 cursor-not-allowed"
+          : "bg-green-500 text-white hover:bg-green-600"
+      }`}
+    >
+      Previous
+    </button>
+
+    <span className="text-gray-700 font-medium">Page {currentPage}</span>
+
+    <button
+      disabled={
+        currentPage * itemsPerPage >=
+        salaryGroups.filter((item) => {
+          const monthNames = [
+            "January","February","March","April","May","June",
+            "July","August","September","October","November","December"
+          ];
+          const monthName = monthNames[item.month - 1];
+
+          return `${monthName} ${item.year} ${new Date(item.payDate).toLocaleDateString()}`
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
+        }).length
+      }
+      onClick={() => {
+        setIsLoading(true);
+        setTimeout(() => {
+          setCurrentPage((prev) => prev + 1);
+          setIsLoading(false);
+        }, 300);
+      }}
+      className={`px-4 py-1 rounded ${
+        currentPage * itemsPerPage >= salaryGroups.length
+          ? "bg-gray-300 cursor-not-allowed"
+          : "bg-green-500 text-white hover:bg-green-600"
+      }`}
+    >
+      Next
+    </button>
+  </div>
+</div>
+
 
 
 {showDetailModal && selectedSalaryRecords && (
@@ -309,7 +344,7 @@ const employeeSalary = () => {
 
       {/* Title */}
       <h2 className="text-lg sm:text-xl font-bold text-gray-800 text-center mb-4">
-        Detailed Salaries for: {selectedSalaryRecords.month} {selectedSalaryRecords.year}
+        Detailed Salaries for: {monthNames[selectedSalaryRecords.month - 1]} {selectedSalaryRecords.year}
       </h2>
 
       {/* Scrollable Table */}

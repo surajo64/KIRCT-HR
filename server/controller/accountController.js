@@ -351,9 +351,6 @@ export const updateBudgetSpent = async (userId, category, amount, month, year) =
 
 
 
-
-
-
 // Generate payroll for all employees
 export const AddPayroll = async (req, res) => {
   try {
