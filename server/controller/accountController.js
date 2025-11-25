@@ -641,13 +641,11 @@ export const updatePayroll = async (req, res) => {
 
 
 // Download Excel
+
 export const downloadExcel = async (req, res) => {
   try {
     const { month, year } = req.query;
 
-    console.log('Download Excel request received:', { month, year });
-
-    // Validate inputs
     if (!month || !year) {
       return res.status(400).json({
         success: false,
@@ -655,7 +653,7 @@ export const downloadExcel = async (req, res) => {
       });
     }
 
-    // Find payrolls with detailed population
+    // Fetch payrolls for the given month/year
     const payrolls = await Payroll.find({
       month: parseInt(month),
       year: parseInt(year)
@@ -664,46 +662,34 @@ export const downloadExcel = async (req, res) => {
         path: 'employee',
         select: 'name staffId bankAccount department overtimeRate type userId',
         populate: [
-          {
-            path: 'department',
-            select: 'name'
-          },
-          {
-            path: 'userId',
-            select: 'name'
-          }
+          { path: 'department', select: 'name' },
+          { path: 'userId', select: 'name' }
         ]
       })
       .lean();
 
-    console.log(`Found ${payrolls.length} payroll records for ${month}/${year}`);
-
-    if (payrolls.length === 0) {
+    if (!payrolls.length) {
       return res.status(404).json({
         success: false,
         message: `No payroll data found for ${month}/${year}`
       });
     }
 
-    // Log a sample to check data structure
-    console.log('Sample payroll data:', {
-      name: payrolls[0]?.employee?.userId?.name,
-      basicSalary: payrolls[0]?.basicSalary,
-      transportAllowance: payrolls[0]?.transportAllowance,
-      mealAllowance: payrolls[0]?.mealAllowance,
-      overtimeRate: payrolls[0]?.overtimeRate,
-      grossSalary: payrolls[0]?.grossSalary
-    });
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Payroll');
 
-    // Updated columns to match Payroll Schema
+    // Add a title row for selected month/year
+    worksheet.addRow([`Payroll Report for Month: ${month}, Year: ${year}`]);
+    worksheet.addRow([]); // empty row for spacing
+
+    // Define columns - CORRECTED: Added Month and Year columns
     worksheet.columns = [
       { header: 'S/N', key: 'sn', width: 8 },
       { header: 'Staff ID', key: 'staffId', width: 15 },
       { header: 'Employee Name', key: 'name', width: 25 },
       { header: 'Department', key: 'department', width: 20 },
+      { header: 'Month', key: 'monthColumn', width: 12 }, // Changed key to avoid conflict
+      { header: 'Year', key: 'yearColumn', width: 12 },   // Changed key to avoid conflict
       { header: 'Bank Name', key: 'bankName', width: 20 },
       { header: 'Account Number', key: 'accountNumber', width: 20 },
       { header: 'Account Name', key: 'accountName', width: 25 },
@@ -726,27 +712,38 @@ export const downloadExcel = async (req, res) => {
       { header: 'Status', key: 'status', width: 12 }
     ];
 
-    // Add header styling
-    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    worksheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF2E86AB' }
+    // Style header row
+    const headerRow = worksheet.getRow(3); // actual header after title + empty row
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { 
+      type: 'pattern', 
+      pattern: 'solid', 
+      fgColor: { argb: 'FF2E86AB' } 
     };
-    worksheet.getRow(1).alignment = { horizontal: 'center' };
+    headerRow.alignment = { horizontal: 'center' };
 
-    // Add data rows with all fields from Payroll Schema
+    // Helper function to get month name
+    const getMonthName = (monthNum) => {
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return months[parseInt(monthNum) - 1] || monthNum;
+    };
+
+    // Add payroll data rows - CORRECTED: Include month and year data
     payrolls.forEach((payroll, index) => {
-      const employee = payroll.employee;
-
+      const emp = payroll.employee;
       const rowData = {
         sn: index + 1,
-        staffId: employee?.staffId || 'N/A',
-        name: employee?.userId?.name || employee?.name || 'Unknown Employee',
-        department: employee?.department?.name || 'N/A',
-        bankName: employee?.bankAccount?.bankName || 'Not provided',
-        accountNumber: employee?.bankAccount?.accountNumber || 'Not provided',
-        accountName: employee?.bankAccount?.accountName || 'Not provided',
+        staffId: emp?.staffId || 'N/A',
+        name: emp?.userId?.name || emp?.name || 'Unknown',
+        department: emp?.department?.name || 'N/A',
+        monthColumn: getMonthName(payroll.month), // Use the correct key
+        yearColumn: payroll.year, // Use the correct key
+        bankName: emp?.bankAccount?.bankName || 'N/A',
+        accountNumber: emp?.bankAccount?.accountNumber || 'N/A',
+        accountName: emp?.bankAccount?.accountName || 'N/A',
         basicSalary: payroll.basicSalary || 0,
         transportAllowance: payroll.transportAllowance || 0,
         mealAllowance: payroll.mealAllowance || 0,
@@ -766,109 +763,113 @@ export const downloadExcel = async (req, res) => {
         status: payroll.status || 'Pending'
       };
 
-      console.log(`Adding row ${index + 1}:`, {
-        name: rowData.name,
-        basicSalary: rowData.basicSalary,
-        transportAllowance: rowData.transportAllowance,
-        mealAllowance: rowData.mealAllowance,
-        grossSalary: rowData.grossSalary
+      console.log(`Row ${index + 1} month/year data:`, {
+        monthColumn: rowData.monthColumn,
+        yearColumn: rowData.yearColumn
       });
 
       worksheet.addRow(rowData);
     });
 
-    // Format numeric columns
-    const currencyColumns = ['H', 'I', 'J', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
-    currencyColumns.forEach(col => {
+    // Set numeric formatting (currency & hours) - CORRECTED column references
+    const currencyCols = ['J','K','L','N','O','P','Q','R','S','T','U','V','W','X','Y'];
+    currencyCols.forEach(col => {
       const column = worksheet.getColumn(col);
-      if (col === 'K') { // Overtime Hours (column K)
-        column.numFmt = '0.00';
-        column.alignment = { horizontal: 'right' };
-      } else { // Currency columns
-        column.numFmt = '"₦"#,##0.00';
-        column.alignment = { horizontal: 'right' };
+      if (col === 'M') { 
+        // Overtime Hours column
+        column.numFmt = '0.00'; 
+        column.alignment = { horizontal: 'right' }; 
+      } else { 
+        // Currency columns
+        column.numFmt = '"₦"#,##0.00'; 
+        column.alignment = { horizontal: 'right' }; 
       }
     });
 
-    // Center align specific columns
-    const centerAlignColumns = ['A', 'B', 'X']; // S/N, Staff ID, Status
-    centerAlignColumns.forEach(col => {
-      worksheet.getColumn(col).alignment = { horizontal: 'center' };
+    // Align columns - CORRECTED column references
+    // Center align: S/N, Staff ID, Month, Year, Status
+    ['A','B','E','F','Z'].forEach(col => {
+      const column = worksheet.getColumn(col);
+      if (column) {
+        column.alignment = { horizontal: 'center' };
+      }
+    });
+    
+    // Left align: Name, Department, Bank fields
+    ['C','D','G','H','I'].forEach(col => {
+      const column = worksheet.getColumn(col);
+      if (column) {
+        column.alignment = { horizontal: 'left' };
+      }
     });
 
-    // Left align text columns
-    const leftAlignColumns = ['C', 'D', 'E', 'F', 'G']; // Name, Department, Bank fields
-    leftAlignColumns.forEach(col => {
-      worksheet.getColumn(col).alignment = { horizontal: 'left' };
-    });
-
-    // Add summary row
+    // Add summary row - CORRECTED: Include empty month/year columns
     const lastRow = worksheet.rowCount;
     worksheet.addRow([]); // Empty row for spacing
 
-    // Summary row with formulas for all monetary columns
     const summaryRow = worksheet.addRow({
       sn: 'TOTAL',
       staffId: '',
       name: '',
       department: '',
+      monthColumn: '', // Empty for month
+      yearColumn: '',  // Empty for year
       bankName: '',
       accountNumber: '',
       accountName: '',
-      basicSalary: { formula: `SUM(H2:H${lastRow})` },
-      transportAllowance: { formula: `SUM(I2:I${lastRow})` },
-      mealAllowance: { formula: `SUM(J2:J${lastRow})` },
-      overtimeHours: { formula: `SUM(K2:K${lastRow})` },
-      overtimeAmount: { formula: `SUM(M2:M${lastRow})` },
-      grossSalary: { formula: `SUM(N2:N${lastRow})` },
-      employeePension: { formula: `SUM(O2:O${lastRow})` },
-      employerPension: { formula: `SUM(P2:P${lastRow})` },
-      pension: { formula: `SUM(Q2:Q${lastRow})` },
-      payeTax: { formula: `SUM(R2:R${lastRow})` },
-      withholdingTax: { formula: `SUM(S2:S${lastRow})` },
-      loanDeductions: { formula: `SUM(T2:T${lastRow})` },
-      nonTaxPay: { formula: `SUM(U2:U${lastRow})` },
-      totalDeductions: { formula: `SUM(V2:V${lastRow})` },
-      netSalary: { formula: `SUM(W2:W${lastRow})` },
+      basicSalary: { formula: `SUM(J4:J${lastRow})` },
+      transportAllowance: { formula: `SUM(K4:K${lastRow})` },
+      mealAllowance: { formula: `SUM(L4:L${lastRow})` },
+      overtimeHours: { formula: `SUM(M4:M${lastRow})` },
+      overtimeAmount: { formula: `SUM(O4:O${lastRow})` },
+      grossSalary: { formula: `SUM(P4:P${lastRow})` },
+      employeePension: { formula: `SUM(Q4:Q${lastRow})` },
+      employerPension: { formula: `SUM(R4:R${lastRow})` },
+      pension: { formula: `SUM(S4:S${lastRow})` },
+      payeTax: { formula: `SUM(T4:T${lastRow})` },
+      withholdingTax: { formula: `SUM(U4:U${lastRow})` },
+      loanDeductions: { formula: `SUM(V4:V${lastRow})` },
+      nonTaxPay: { formula: `SUM(W4:W${lastRow})` },
+      totalDeductions: { formula: `SUM(X4:X${lastRow})` },
+      netSalary: { formula: `SUM(Y4:Y${lastRow})` },
       status: ''
     });
 
     // Style summary row
     summaryRow.font = { bold: true };
-    summaryRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFF0F0F0' }
+    summaryRow.fill = { 
+      type: 'pattern', 
+      pattern: 'solid', 
+      fgColor: { argb: 'FFF0F0F0' } 
     };
 
     // Format summary row currency cells
-    const summaryCurrencyColumns = ['H', 'I', 'J', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
-    summaryCurrencyColumns.forEach(col => {
+    const summaryCurrencyCols = ['J','K','L','O','P','Q','R','S','T','U','V','W','X','Y'];
+    summaryCurrencyCols.forEach(col => {
       const cell = summaryRow.getCell(col);
       cell.numFmt = '"₦"#,##0.00';
     });
 
     // Format overtime hours in summary
-    summaryRow.getCell('K').numFmt = '0.00';
+    summaryRow.getCell('M').numFmt = '0.00';
 
-    // Set response headers
+    // Set response headers and send Excel
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=payroll-${month}-${year}.xlsx`);
-
-    // Write to buffer
     const buffer = await workbook.xlsx.writeBuffer();
-
-    console.log('Excel file generated successfully with all Payroll Schema fields');
+    
+    console.log(`Excel file generated successfully with ${payrolls.length} records`);
     res.send(buffer);
 
   } catch (error) {
     console.error('Error in downloadExcel:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate Excel file: ' + error.message
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to generate Excel file: ' + error.message 
     });
   }
 };
+
 
 // Get Payroll - robust version
 export const GetPayroll = async (req, res) => {

@@ -21,6 +21,12 @@ const AppContextProvider = ({ children }) => {
   const [evaluations, setEvaluations] = useState(null);
   const [employeeLeaves, setEmployeeLeaves] = useState(null)
    const [sameDeptEmployees, setSameDeptEmployees] = useState([]);
+   const [leaveBalanceInfo, setLeaveBalanceInfo] = useState({
+       initialLeaveDays: 0,
+       leaveBalance: 0,
+       usedLeaveDays: 0,
+       pendingLeavesCount: 0
+     });
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -67,6 +73,7 @@ const AppContextProvider = ({ children }) => {
 
   }
 
+  
   // get all Patient list
   const getAllEmployees = async () => {
 
@@ -79,6 +86,7 @@ const AppContextProvider = ({ children }) => {
     }
     );
     if (data.success) {
+      
       setEmployees(data.employees)
       console.log("API Response for Employess",data.employees)
 
@@ -128,6 +136,10 @@ const AppContextProvider = ({ children }) => {
       if (data.success) {
         setLeaves(data.leaves);
         console.log("employee leaves:", data.leaves)
+         // Update leave balance info
+        
+        return data.leaves || [];
+        
       } else {
         toast.error(data.message);
       }

@@ -166,11 +166,11 @@ const Sidebar = () => {
                 <SidebarSection>
                   <SidebarLink to="/hod-dashboard" label="Dashboard" icon={assets.Home} />
                   <SidebarLink to="/profile" label="My Profile" icon={assets.Emplyees} />
+                  <SidebarLink to="/employee-leave" label="Leave Requests" icon={assets.Leave} />
                   <SidebarLink to="/hod-leave" label="Leave Approval" icon={assets.Leave} />
                   <SidebarLink to="/employee-loan" label="Loan Requests" icon={assets.Salary} />
                   <SidebarLink to="/employee-salary" label="Salary Overview" icon={assets.Salary} />
                   <SidebarLink to="/employee-bonus" label="Bonus Overview" icon={assets.Salary} />
-                  <SidebarLink to="/attendence" label="Team Attendance" icon={assets.Attend} />
                   <SidebarLink to="/evaluation" label="Performance" icon={assets.Evaluation} />
                   <SidebarLink to="/messages" label="Messages" icon={assets.Department} />
                   <SidebarLink to="/setting" label="Change Password" icon={assets.Setting} />

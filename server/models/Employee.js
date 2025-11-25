@@ -9,6 +9,8 @@ const employeeSchema = new mongoose.Schema({
   gender: {type: String, },
   dob: { type: Date,},
   joinDate: { type: Date,},
+  duration: { type: String,},
+  leaveDays: { type: Number,},
   maritalStatus: { type: String},
   designation: { type: String },
   experience: { type: String},

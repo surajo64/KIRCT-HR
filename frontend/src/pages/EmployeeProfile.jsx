@@ -277,6 +277,9 @@ const employeeProfile = () => {
             { label: "DOB", value: new Date(employee.dob).toLocaleDateString() },
             { label: "Marital Status", value: employee.maritalStatus },
             { label: "Phone", value: employee.phone },
+            { label: "Leave Days", value: employee.leaveDays },
+            { label: "Join Date", value: new Date(employee.joinDate).toLocaleDateString() },
+            { label: "duration", value: employee.duration },
             { label: "Address", value: employee.address },
             { label: "State", value: employee.state },
             { label: "Join Date", value: new Date(employee.joinDate).toLocaleDateString() },
@@ -425,8 +428,9 @@ const employeeProfile = () => {
 
             <select
               value={experience}
+              disabled
               onChange={e => setExperience(e.target.value)}
-              className="w-full p-2 border border-green-300 rounded"
+               className="w-full p-2 border border-green-300 rounded bg-gray-100 cursor-not-allowed"
             >
               <option value="">Working Experience</option>
               <option value="1-5">1-5 Years</option>
@@ -439,8 +443,9 @@ const employeeProfile = () => {
 
             <select
               value={qualification}
+              disabled
               onChange={e => setQualification(e.target.value)}
-              className="w-full p-2 border border-green-300 rounded"
+               className="w-full p-2 border border-green-300 rounded bg-gray-100 cursor-not-allowed"
             >
               <option value="">Highest Qualification</option>
               <option value="SSCE">SSCE</option>

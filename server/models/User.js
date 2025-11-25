@@ -7,6 +7,7 @@ const userSchema = new Schema({
   email: { type: String, lowercase: true, required: true },
   department: { type: Schema.Types.ObjectId, ref: 'Department', required: true }, 
   password: { type: String, required: true },
+  leaveDays: { type: Number,},
   role: { type: String, enum: ['admin', 'employee','HREmployee', 'HOD'], required: true },
   profileImage: { type: String },
   createdAt: { type: Date, default: Date.now },

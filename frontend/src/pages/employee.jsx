@@ -42,6 +42,8 @@ const employee = () => {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [joinDate, setJoinDate] = useState('');
+  const [duration, setDuration] = useState('');
+  const [leaveDays, setLeaveDays] = useState('');
   const [qualification, setQualification] = useState('');
   const [experience, setExperience] = useState('');
   const [selectedImageFile, setSelectedImageFile] = useState(null);
@@ -108,7 +110,7 @@ const employee = () => {
       setSalary(""); setPassword(""); setRole(""); setAddress(""); setPhone("");
       setSelectedImageFile(null); setState(""); setQualification(""); setExperience("");
       setSelectedCVFile(""); setSelectedImageFile(""); setJoinDate("");
-      setShowForm(false); setType("");setRent("");
+      setShowForm(false); setType(""); setRent(""); setDuration(""); setLeaveDays("")
       // Reset payroll fields
       setBasicSalary(""); setOvertimeRate(""); setTaxIdentificationNumber("");
       setBankName(""); setAccountNumber(""); setAccountName("");
@@ -149,11 +151,14 @@ const employee = () => {
       setType(item.type);
       setRent(item.rent);
       setRole(item.userId.role)
-      const formattedjoinDate = new Date(item.joinDate).toISOString().split('T')[0];
-      setJoinDate(formattedjoinDate)
+const formattedjoinDate = new Date(item.joinDate).toISOString().split('T')[0];
+setJoinDate(formattedjoinDate);
+
+setDuration(calculateDuration(formattedjoinDate));
       const formattedDob = new Date(item.dob).toISOString().split('T')[0];
       setDob(formattedDob);
       setGender(item.gender);
+      setLeaveDays(item.leaveDays);
       setMaritalStatus(item.maritalStatus);
       setSelectedDepartment(item.department?._id || item.department?.name);
       if (item.department?._id) {
@@ -225,6 +230,8 @@ const employee = () => {
     formData.append('state', state);
     formData.append('type', type);
     formData.append('rent', rent);
+    formData.append('duration', duration);
+    formData.append('leaveDays', leaveDays);
     formData.append('qualification', qualification);
     formData.append('experience', experience);
     formData.append("cv", selectedCVFile);
@@ -316,6 +323,7 @@ const employee = () => {
     });
 
     setFilteredEmployess(filtered);
+    
     setCurrentPage(1);
   }, [searchTerm, employees]);
 
@@ -350,18 +358,52 @@ const employee = () => {
   if (!employees) return <LoadingOverlay />;
 
   // ✅ Handle basic salary change
-const handleBasicSalaryChange = (e) => {
-  const value = e.target.value;
-  setBasicSalary(value);
+  const handleBasicSalaryChange = (e) => {
+    const value = e.target.value;
+    setBasicSalary(value);
 
-  // ✅ Auto-calculate overtime rate (Basic Salary ÷ 176)
-  if (value && !isNaN(value)) {
-    const rate = (parseFloat(value) / 176).toFixed(2);
-    setOvertimeRate(rate);
-  } else {
-    setOvertimeRate('');
-  }
-};
+    // ✅ Auto-calculate overtime rate (Basic Salary ÷ 176)
+    if (value && !isNaN(value)) {
+      const rate = (parseFloat(value) / 176).toFixed(2);
+      setOvertimeRate(rate);
+    } else {
+      setOvertimeRate('');
+    }
+  };
+
+  const calculateDuration = (date) => {
+    if (!date) return "";
+
+    const join = new Date(date);
+    const now = new Date();
+
+    let years = now.getFullYear() - join.getFullYear();
+    let months = now.getMonth() - join.getMonth();
+    let days = now.getDate() - join.getDate();
+
+    // Fix negative days
+    if (days < 0) {
+      months--;
+      const previousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      days += previousMonth.getDate();
+    }
+
+    // Fix negative months
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years} year(s) ${months} month(s) ${days} day(s)`;
+  };
+
+
+  const handleJoinDateChange = (e) => {
+    const value = e.target.value;
+    setJoinDate(value);
+    setDuration(calculateDuration(value));
+  };
+
 
   return (
     <div className='w-full max-w-6xl mx-auto px-4 text-center'>
@@ -669,6 +711,20 @@ const handleBasicSalaryChange = (e) => {
                       ))}
                     </select>
 
+                    {/* Designation Dropdown */}
+                    <select
+                      value={designation}
+                      onChange={e => setDesignation(e.target.value)}
+                      required
+                      className="w-full p-2 border border-green-300 rounded"
+                      disabled={!selectedDepartment}
+                    >
+                      <option value="">Select Designation</option>
+                      {designationOptions.map((desig, idx) => (
+                        <option key={idx} value={desig}>{desig}</option>
+                      ))}
+                    </select>
+
                     <select
                       value={type}
                       onChange={e => setType(e.target.value)}
@@ -681,28 +737,32 @@ const handleBasicSalaryChange = (e) => {
                     </select>
                   </div>
 
-                  {/* Designation Dropdown */}
-                  <select
-                    value={designation}
-                    onChange={e => setDesignation(e.target.value)}
-                    required
-                    className="w-full p-2 border border-green-300 rounded"
-                    disabled={!selectedDepartment}
-                  >
-                    <option value="">Select Designation</option>
-                    {designationOptions.map((desig, idx) => (
-                      <option key={idx} value={desig}>{desig}</option>
-                    ))}
-                  </select>
-
                   <label className="block font-medium">Join Date</label>
                   <input
                     type="date"
                     value={joinDate}
-                    onChange={e => setJoinDate(e.target.value)}
+                    onChange={handleJoinDateChange}
                     required
                     className="w-full p-2 border border-green-300 rounded"
                   />
+
+                  <input
+                    type="text"
+                    value={duration}
+                    readOnly
+                    placeholder="Employee Duration in the Centre"
+                    className="w-full p-2 border border-green-300 rounded bg-gray-100"
+                  />
+
+
+                  <input
+                    type="number"
+                    value={leaveDays}
+                    onChange={e => setLeaveDays(e.target.value)}
+                    placeholder="Leave Days Entitled"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
 
                   <select
                     value={role}
@@ -714,45 +774,9 @@ const handleBasicSalaryChange = (e) => {
                     <option value="HOD">HOD</option>
                     <option value="HREmployee">HR Employee</option>
                     <option value="employee">Employee</option>
-                    
+
                   </select>
 
-                  {/* CV Upload */}
-                  <label className="block font-medium">Upload CV (PDF)</label>
-                  {editingAdmin && typeof selectedCVFile === 'string' && (
-                    <a
-                      href={selectedCVFile}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline block mb-2"
-                    >
-                      View Uploaded CV
-                    </a>
-                  )}
-                  <input
-                    type="file"
-                    name="cv"
-                    onChange={e => setSelectedCVFile(e.target.files[0])}
-                    accept=".pdf"
-                    className="w-full p-2 border border-green-300 rounded"
-                  />
-
-                  {/* Profile Image Upload */}
-                  <label className="block font-medium">Profile Image</label>
-                  {editingAdmin && typeof selectedImageFile === 'string' && (
-                    <img
-                      src={selectedImageFile}
-                      alt="Profile Preview"
-                      className="w-24 h-24 object-cover rounded-full mb-2"
-                    />
-                  )}
-                  <input
-                    type="file"
-                    name="image"
-                    onChange={e => setSelectedImageFile(e.target.files[0])}
-                    accept="image/*"
-                    className="w-full p-2 border border-green-300 rounded"
-                  />
                 </div>
 
                 {/* Payroll Information Column */}
@@ -817,6 +841,44 @@ const handleBasicSalaryChange = (e) => {
                     placeholder="Account Name"
                     className="w-full p-2 border border-green-300 rounded"
                   />
+
+                  {/* CV Upload */}
+                  <label className="block font-medium">Upload CV (PDF)</label>
+                  {editingAdmin && typeof selectedCVFile === 'string' && (
+                    <a
+                      href={selectedCVFile}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline block mb-2"
+                    >
+                      View Uploaded CV
+                    </a>
+                  )}
+                  <input
+                    type="file"
+                    name="cv"
+                    onChange={e => setSelectedCVFile(e.target.files[0])}
+                    accept=".pdf"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
+                  {/* Profile Image Upload */}
+                  <label className="block font-medium">Profile Image</label>
+                  {editingAdmin && typeof selectedImageFile === 'string' && (
+                    <img
+                      src={selectedImageFile}
+                      alt="Profile Preview"
+                      className="w-24 h-24 object-cover rounded-full mb-2"
+                    />
+                  )}
+                  <input
+                    type="file"
+                    name="image"
+                    onChange={e => setSelectedImageFile(e.target.files[0])}
+                    accept="image/*"
+                    className="w-full p-2 border border-green-300 rounded"
+                  />
+
                 </div>
               </div>
 
@@ -874,12 +936,14 @@ const handleBasicSalaryChange = (e) => {
                 { label: "Marital Status", value: selectedEmployee.maritalStatus },
                 { label: "State", value: selectedEmployee.state },
                 { label: "Address", value: selectedEmployee.address },
+                { label: "Leave Days", value: selectedEmployee.leaveDays },
                 { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
+                { label: "duration", value: selectedEmployee.duration },
                 { label: "Experience", value: selectedEmployee.experience },
                 { label: "Qualification", value: selectedEmployee.qualification },
                 { label: "Role", value: selectedEmployee.userId?.role },
                 { label: "Employee Type", value: selectedEmployee.type },
-                { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set'  },
+                { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set' },
                 { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
                 { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
                 { label: "Tax ID", value: selectedEmployee.taxIdentificationNumber || 'Not provided' },
@@ -1102,53 +1166,61 @@ const handleBasicSalaryChange = (e) => {
 
                 {/* Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 text-start">
-                  {[
-                    { label: "Name", value: selectedEmployee.userId?.name },
-                    { label: "Email", value: selectedEmployee.userId?.email },
-                    { label: "Staff ID", value: selectedEmployee.staffId },
-                    { label: "Department", value: selectedEmployee.department?.name },
-                    { label: "Designation", value: selectedEmployee.designation },
-                    { label: "DOB", value: new Date(selectedEmployee.dob).toLocaleDateString() },
-                    { label: "Phone", value: selectedEmployee.phone },
-                    { label: "Gender", value: selectedEmployee.gender },
-                    { label: "Marital Status", value: selectedEmployee.maritalStatus },
-                    { label: "State", value: selectedEmployee.state },
-                    { label: "Address", value: selectedEmployee.address },
-                    { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
-                    { label: "Experience", value: selectedEmployee.experience },
-                    { label: "Qualification", value: selectedEmployee.qualification },
-                    { label: "Employee Type", value: selectedEmployee.type },
-                    {
-                      label: "Employee Status",
-                      value: (
-                        <span className={selectedEmployee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                          {selectedEmployee.status ? "Active" : "Inactive"}
-                        </span>
-                      ),
-                    },
-
-                    { label: "Role", value: selectedEmployee.userId?.role },
-                    {
-                      label: "CV",
-                      value: selectedEmployee.cv ? (
-                        <a
-                          href={`${backendUrl}/upload/${selectedEmployee.cv}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline block"
-                        >
-                          View Uploaded CV
-                        </a>
-                      ) : (
-                        <span className="text-red-500">No CV uploaded</span>
-                      ),
-                    },
-                  ].map((item, index) => (
-                    <div key={index} className="flex border-b py-2">
-                      <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
-                      <div className="text-gray-800 break-words">{item.value}</div>
-                    </div>
-                  ))}
+                 {[
+                { label: "Name", value: selectedEmployee.userId?.name },
+                { label: "Email", value: selectedEmployee.userId?.email },
+                { label: "Staff ID", value: selectedEmployee.staffId },
+                { label: "Department", value: selectedEmployee.department?.name },
+                { label: "Designation", value: selectedEmployee.designation },
+                { label: "DOB", value: new Date(selectedEmployee.dob).toLocaleDateString() },
+                { label: "Phone", value: selectedEmployee.phone },
+                { label: "Gender", value: selectedEmployee.gender },
+                { label: "Marital Status", value: selectedEmployee.maritalStatus },
+                { label: "State", value: selectedEmployee.state },
+                { label: "Address", value: selectedEmployee.address },
+                { label: "Leave Days", value: selectedEmployee.leaveDays },
+                { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
+                { label: "duration", value: selectedEmployee.duration },
+                { label: "Experience", value: selectedEmployee.experience },
+                { label: "Qualification", value: selectedEmployee.qualification },
+                { label: "Role", value: selectedEmployee.userId?.role },
+                { label: "Employee Type", value: selectedEmployee.type },
+                { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set' },
+                { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
+                { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
+                { label: "Tax ID", value: selectedEmployee.taxIdentificationNumber || 'Not provided' },
+                { label: "Bank Name", value: selectedEmployee.bankAccount?.bankName || 'Not provided' },
+                { label: "Account Number", value: selectedEmployee.bankAccount?.accountNumber || 'Not provided' },
+                { label: "Account Name", value: selectedEmployee.bankAccount?.accountName || 'Not provided' },
+                {
+                  label: "Employee Status",
+                  value: (
+                    <span className={selectedEmployee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                      {selectedEmployee.status ? "Active" : "Inactive"}
+                    </span>
+                  ),
+                },
+                {
+                  label: "CV",
+                  value: selectedEmployee.cv ? (
+                    <a
+                      href={selectedEmployee.cv}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline block"
+                    >
+                      View Uploaded CV
+                    </a>
+                  ) : (
+                    <span className="text-red-500">No CV uploaded</span>
+                  ),
+                }
+              ].map((item, index) => (
+                <div key={index} className="flex border-b py-2">
+                  <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
+                  <div className="text-gray-800 break-words">{item.value}</div>
+                </div>
+              ))}
                 </div>
 
                 {/* Back Button */}

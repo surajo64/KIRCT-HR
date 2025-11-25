@@ -11,7 +11,7 @@ import { dirname } from 'path';
 import fs from 'fs';
 import http from 'http';
 import { Server } from 'socket.io';
-
+import "./jobs/updateEmployeeDuration.js";
 // ✅ 3. Internal modules (AFTER dotenv.config)
 import connectToDatabase from './db/db.js';
 import authRouter from './routes/auth.js';

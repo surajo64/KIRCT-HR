@@ -22,9 +22,13 @@ export const login = async (req, res) => {
         success: true,
         token,
         user: {
-          _id: user._id,   // <-- return _id instead of id
+          _id: user._id,
           name: user.name,
-          role: user.role
+          role: user.role,
+          email: user.email,
+          department: user.department,
+          leaveDays: user.leaveDays,   // ✅ ADD THIS
+          profileImage: user.profileImage
         },
       });
     } else {

@@ -27,7 +27,7 @@ const addEmployee = async (req, res) => {
     const {
       name, email, phone, department,rent,
       designation, role, state,
-      maritalStatus, dob, joinDate,
+      maritalStatus, dob, joinDate,duration,leaveDays,
       gender, staffId, address, password,
       experience, qualification, type,
       // Payroll fields
@@ -69,6 +69,7 @@ const addEmployee = async (req, res) => {
       department,
       password: hashPassword,
       role,
+      leaveDays,
       profileImage
     });
 
@@ -100,6 +101,8 @@ const addEmployee = async (req, res) => {
       dob,
       type,
       joinDate,
+      duration,
+      leaveDays,
       gender,
       staffId: normalizedStaffId,
       address,
@@ -142,8 +145,9 @@ const updateEmployee = async (req, res) => {
     const {
       employeeId,
       name, email, phone, department,
-      designation, role, state,
-      maritalStatus, dob, type,rent,
+      designation, role, state, duration,
+      leaveDays, joinDate,
+      maritalStatus, dob, type, rent,
       gender, staffId, address, password,
       experience, qualification,
       // Payroll fields
@@ -151,14 +155,13 @@ const updateEmployee = async (req, res) => {
       bankName, accountNumber, accountName
     } = req.body;
 
-
     if (!staffId) {
       return res.json({ success: false, message: "Staff ID is required" });
     }
 
     const normalizedStaffId = staffId.toLowerCase();
 
-    // Find the employee by ID
+    // Find employee + user
     const employee = await Employee.findById(employeeId).populate("userId");
     if (!employee) {
       return res.status(404).json({ success: false, message: "Employee not found" });
@@ -166,39 +169,41 @@ const updateEmployee = async (req, res) => {
 
     const userId = employee.userId._id;
 
-    // Check if email is used by another user
+    // Check if email used by another user
     const existingUser = await User.findOne({ email, _id: { $ne: userId } });
     if (existingUser) {
       return res.json({ success: false, message: "Email already in use by another employee" });
     }
 
-    // Check if staffId is used by another employee
-    const existingStaffId = await Employee.findOne({ staffId: normalizedStaffId, _id: { $ne: employeeId } });
+    // Check for duplicate staffId
+    const existingStaffId = await Employee.findOne({
+      staffId: normalizedStaffId,
+      _id: { $ne: employeeId }
+    });
     if (existingStaffId) {
       return res.json({ success: false, message: "Staff ID already in use by another employee" });
     }
 
+    // Handle uploads
     let profileImageUrl = employee.userId.profileImage;
     let cvUrl = employee.cv;
 
-    // Get updated Cloudinary URLs if new files were uploaded
     if (req.files?.image) {
-      profileImageUrl = req.files.image[0].path; // Cloudinary URL
-      console.log('Updated profile image URL:', profileImageUrl);
+      profileImageUrl = req.files.image[0].path;
     }
 
     if (req.files?.cv) {
-      cvUrl = req.files.cv[0].path; // Cloudinary URL
-      console.log('Updated CV URL:', cvUrl);
+      cvUrl = req.files.cv[0].path;
     }
 
-    // Prepare user update data
+    // Update USER
     const updatedUserData = {
       name,
       email,
       role,
       department,
-      profileImage: profileImageUrl
+      profileImage: profileImageUrl,
+      leaveDays: leaveDays !== undefined ? leaveDays : employee.userId.leaveDays, // FIXED
     };
 
     if (password) {
@@ -208,14 +213,14 @@ const updateEmployee = async (req, res) => {
 
     await User.findByIdAndUpdate(userId, updatedUserData, { new: true });
 
-    // Prepare bank account object
+    // BANK details
     const bankAccount = {
       bankName: bankName || employee.bankAccount?.bankName || "",
       accountNumber: accountNumber || employee.bankAccount?.accountNumber || "",
       accountName: accountName || employee.bankAccount?.accountName || ""
     };
 
-    // Prepare employee update data
+    // Update EMPLOYEE
     const updatedEmployeeData = {
       name,
       phone,
@@ -226,42 +231,43 @@ const updateEmployee = async (req, res) => {
       dob,
       rent,
       type,
+      duration,
+      leaveDays: leaveDays !== undefined ? leaveDays : employee.leaveDays, // FIXED
+      joinDate: joinDate ? new Date(joinDate) : employee.joinDate,
       gender,
       staffId: normalizedStaffId,
       address,
       experience: experience || employee.experience,
       qualification: qualification || employee.qualification,
       cv: cvUrl,
-      // Payroll fields
       basicSalary: basicSalary ? parseFloat(basicSalary) : employee.basicSalary || 0,
       overtimeRate: overtimeRate ? parseFloat(overtimeRate) : employee.overtimeRate || 0,
       taxIdentificationNumber: taxIdentificationNumber || employee.taxIdentificationNumber || "",
-      bankAccount: bankAccount
+      bankAccount
     };
 
     const updatedEmployee = await Employee.findByIdAndUpdate(
-      employeeId, 
-      updatedEmployeeData, 
+      employeeId,
+      updatedEmployeeData,
       { new: true }
-    ).populate('userId');
+    ).populate("userId");
 
-    console.log('Employee updated successfully with payroll data');
-
-    res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       message: "Employee updated successfully",
       employee: updatedEmployee
     });
 
   } catch (error) {
     console.error("Update Employee Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server error while updating employee",
       error: error.message
     });
   }
 };
+
 
 
 // Update employee status to false (deactivate employee)
@@ -577,42 +583,209 @@ export const deleteDepartment = async (req, res) => {
 
 
 
-// API to Add Leave
 
+// API to Add Leave
 const addLeave = async (req, res) => {
   try {
-    const { leave, reason, from, to } = req.body;
+    const { leave, reason, from, to, from2, to2, isSplit } = req.body;
     const userId = req.userId;
 
     if (!leave || !reason || !from || !to) {
-      return res.json({ success: false, message: 'All fields are required!' });
+      return res.json({ success: false, message: "All fields are required!" });
     }
 
-    const leaveData = {
+    // Calculate working days
+    const calculateWorkingDays = (startDate, endDate) => {
+      let count = 0;
+      const current = new Date(startDate);
+      const end = new Date(endDate);
+
+      current.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+
+      while (current <= end) {
+        const day = current.getDay();
+        if (day !== 0 && day !== 6) count++;
+        current.setDate(current.getDate() + 1);
+      }
+      return count;
+    };
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+
+    if (fromDate >= toDate) {
+      return res.json({ success: false, message: "End date must be after start date" });
+    }
+
+    let totalWorkingDays = calculateWorkingDays(from, to);
+
+    // Split leave calculations
+    if (isSplit && from2 && to2) {
+      const from2Date = new Date(from2);
+      const to2Date = new Date(to2);
+
+      if (from2Date <= toDate) {
+        return res.json({
+          success: false,
+          message: "Second phase must start after first phase ends",
+        });
+      }
+
+      if (from2Date >= to2Date) {
+        return res.json({
+          success: false,
+          message: "Second phase end date must be after start date",
+        });
+      }
+
+      totalWorkingDays += calculateWorkingDays(from2, to2);
+    }
+
+    // 👉 Get initial leave days from USER model
+    const User = mongoose.model("User");
+    const userRecord = await User.findById(userId);
+
+    if (!userRecord) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    const initialLeaveDays = userRecord.leaveDays || 0;
+
+    // Calculate used leave days
+    const Leave = mongoose.model("Leave");
+    const approvedLeaves = await Leave.find({
+      userId,
+      status: "Approved",
+    });
+
+    const usedLeaveDays = approvedLeaves.reduce(
+      (sum, l) => sum + (l.totalDays || 0), 0
+    );
+
+    const leaveBalance = Math.max(0, initialLeaveDays - usedLeaveDays);
+
+    // Check balance
+    if (totalWorkingDays > leaveBalance) {
+      return res.json({
+        success: false,
+        message: `Insufficient leave balance. You have ${leaveBalance} days remaining but requested ${totalWorkingDays} days.`,
+      });
+    }
+
+    // Check overlapping leave
+    const overlapping = await Leave.find({
+      userId,
+      status: { $in: ["Pending", "Approved"] },
+      $or: [
+        { from: { $lte: toDate }, to: { $gte: fromDate } },
+        ...(isSplit && from2 && to2
+          ? [
+              {
+                from: { $lte: new Date(to2) },
+                to: { $gte: new Date(from2) },
+              },
+            ]
+          : []),
+      ],
+    });
+
+    if (overlapping.length > 0) {
+      return res.json({
+        success: false,
+        message: "You have an overlapping leave request during this period.",
+      });
+    }
+
+    // Save leave
+    const newLeave = await Leave.create({
       userId,
       leave,
       reason,
-      from,
-      to,
+      from: fromDate,
+      to: toDate,
+      from2: isSplit ? new Date(from2) : null,
+      to2: isSplit ? new Date(to2) : null,
+      isSplit: isSplit || false,
+      totalDays: totalWorkingDays,
       appliedAt: Date.now(),
-      createdAt: Date.now(),
-    };
+    });
 
-    const newLeave = new Leave(leaveData);
-    await newLeave.save();
-
-    // ✅ Populate the user info before sending back
-    const populatedLeave = await Leave.findById(newLeave._id).populate('userId', 'name email department profileImage');
+    const populatedLeave = await Leave.findById(newLeave._id).populate(
+      "userId",
+      "name email profileImage department"
+    );
 
     res.json({
       success: true,
-      message: 'Leave added successfully',
+      message: "Leave added successfully",
       leave: populatedLeave,
+      employeeLeaveInfo: {
+        initialLeaveDays,
+        leaveBalance,
+        usedLeaveDays,
+      },
     });
-
   } catch (error) {
     console.error("Add Leave Error:", error);
     res.status(500).json({ message: "Error adding leave", error: error.message });
+  }
+};
+
+
+
+
+// get Employee leaves
+const getEmployeeLeaves = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Get leave settings from USER MODEL
+    const User = mongoose.model("User");
+    const userRecord = await User.findById(userId).populate("department");
+
+    if (!userRecord) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    const initialLeaveDays = userRecord.leaveDays || 0;
+
+    const Leave = mongoose.model("Leave");
+
+    // Get all leaves
+    const leaves = await Leave.find({ userId })
+      .populate("userId", "name email profileImage department")
+      .populate("relievingEId", "staffId name designation");
+
+    // Used leave days (from approved)
+    const approved = leaves.filter((l) => l.status === "Approved");
+
+    const usedLeaveDays = approved.reduce(
+      (sum, l) => sum + (l.totalDays || 0), 0
+    );
+
+    const leaveBalance = Math.max(0, initialLeaveDays - usedLeaveDays);
+
+    const pendingLeaves = leaves.filter((l) => l.status === "Pending");
+
+    res.json({
+      success: true,
+      leaves,
+      leaveBalanceInfo: {
+        initialLeaveDays,
+        leaveBalance,
+        usedLeaveDays,
+        pendingLeavesCount: pendingLeaves.length,
+        employeeInfo: {
+          name: userRecord.name,
+          staffId: userRecord.staffId,
+          department: userRecord.department,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("Fetch leaves error:", err);
+    res.status(500).json({ message: "Error fetching leaves", error: err.message });
   }
 };
 
@@ -643,42 +816,6 @@ const getAllLeaves = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
-
-
-
-
-// get employee Department
-const getEmployeeLeaves = async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    const leaves = await Leave.find({ userId })
-      .populate({
-        path: 'userId',
-        select: 'name email department profileImage',
-        populate: {
-          path: 'department',
-          model: 'Department',
-          select: 'name'
-        }
-      })
-      .populate({
-        path: 'relievingEId',
-        select: 'staffId name designation', // Add any fields you want from Employee
-        model: 'Employee'
-      });
-
-    res.json({
-      success: true,
-      leaves
-    });
-  } catch (err) {
-    console.error('Fetch leaves error:', err);
-    res.status(500).json({ message: 'Error fetching leaves', error: err.message });
-  }
-};
-
-
 
 const getLeaveToHod = async (req, res) => {
   try {
@@ -793,8 +930,9 @@ const deleteLeave = async (req, res) => {
 // Admin approve Employee Leave
 const approveLeave = async (req, res) => {
   try {
-    const { leaveId } = req.body;
+    const { leaveId, comment } = req.body;
     console.log("Leave ID:", leaveId);
+    console.log("COMMENT RECEIVED:", comment);
     if (!leaveId) {
       return res.status(400).json({ success: false, message: 'Leave ID is required' });
     }
@@ -809,6 +947,7 @@ const approveLeave = async (req, res) => {
     }
 
     leave.status = 'Approved';
+    leave.hrComments = comment
     leave.updatedAt = new Date();
     await leave.save();
 
@@ -823,8 +962,9 @@ const approveLeave = async (req, res) => {
 // Reject Leave
 const rejectLeave = async (req, res) => {
   try {
-    const { leaveId } = req.body;
+    const { leaveId,comment } = req.body;
     console.log("Leave ID:", leaveId);
+    console.log("COMMENT RECEIVED:", comment);
     if (!leaveId) {
       return res.status(400).json({ success: false, message: 'Leave ID is required' });
     }
@@ -839,6 +979,7 @@ const rejectLeave = async (req, res) => {
     }
 
     leave.status = 'Rejected';
+    leave.hrComments = comment;
     leave.updatedAt = new Date();
     await leave.save();
 
@@ -883,6 +1024,87 @@ const addSalary = async (req, res) => {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = xlsx.utils.sheet_to_json(sheet);
 
+    // ✅ Step 3: Extract and validate month and year from Excel
+    let extractedMonth = null;
+    let extractedYear = null;
+
+    // Method 1: Check for Month and Year columns in the data
+    const firstRow = data[0] || {};
+    
+    // Check if Month and Year columns exist in the data
+    if (firstRow['Month'] && firstRow['Year']) {
+      extractedMonth = firstRow['Month'];
+      extractedYear = firstRow['Year'];
+    } 
+    // Method 2: Check for month and year in other column names
+    else {
+      for (const [key, value] of Object.entries(firstRow)) {
+        if (key.toLowerCase().includes('month') && value) {
+          extractedMonth = value;
+        }
+        if (key.toLowerCase().includes('year') && value) {
+          extractedYear = value;
+        }
+      }
+    }
+
+    // Method 3: Try to extract from filename as fallback
+    if (!extractedMonth || !extractedYear) {
+      const filename = req.file.originalname || '';
+      const monthYearMatch = filename.match(/(\d{1,2})[_-](\d{4})/);
+      if (monthYearMatch) {
+        extractedMonth = monthYearMatch[1];
+        extractedYear = monthYearMatch[2];
+      }
+    }
+
+    // ✅ Step 4: Validate month and year
+    if (!extractedMonth || !extractedYear) {
+      return res.status(400).json({ 
+        success: false,
+        message: "❌ Month and year information not found in the Excel file. Please ensure the file contains Month and Year columns." 
+      });
+    }
+
+    // Convert month name to number if needed
+    let monthNumber = extractedMonth;
+    if (isNaN(extractedMonth)) {
+      const monthNames = [
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december'
+      ];
+      const monthIndex = monthNames.indexOf(extractedMonth.toString().toLowerCase());
+      if (monthIndex !== -1) {
+        monthNumber = monthIndex + 1;
+      } else {
+        return res.status(400).json({ 
+          success: false,
+          message: `❌ Invalid month format: ${extractedMonth}. Please use month names (January-December) or numbers (1-12).` 
+        });
+      }
+    }
+
+    // Validate month range
+    monthNumber = parseInt(monthNumber);
+    if (monthNumber < 1 || monthNumber > 12) {
+      return res.status(400).json({ 
+        success: false,
+        message: `❌ Invalid month: ${monthNumber}. Month must be between 1 and 12.` 
+      });
+    }
+
+    // Validate year
+    const yearNumber = parseInt(extractedYear);
+    const currentYear = new Date().getFullYear();
+    if (yearNumber < 2000 || yearNumber > currentYear + 1) {
+      return res.status(400).json({ 
+        success: false,
+        message: `❌ Invalid year: ${yearNumber}. Year must be between 2000 and ${currentYear + 1}.` 
+      });
+    }
+
+    console.log(`📅 Extracted payroll period: Month ${monthNumber}, Year ${yearNumber}`);
+
     const salaryData = [];
 
     for (const row of data) {
@@ -890,7 +1112,22 @@ const addSalary = async (req, res) => {
       if (!staffId) continue;
 
       const employee = await Employee.findOne({ staffId });
-      if (!employee) continue;
+      if (!employee) {
+        console.log(`⚠️ Employee not found with Staff ID: ${staffId}`);
+        continue;
+      }
+
+      // Check if salary already exists for this employee and period
+      const existingSalary = await Salary.findOne({
+        employeeId: employee._id,
+        month: monthNumber,
+        year: yearNumber
+      });
+
+      if (existingSalary) {
+        console.log(`⚠️ Salary already exists for ${staffId} for ${monthNumber}/${yearNumber}`);
+        continue;
+      }
 
       const loanDeduction = Number(row["Loan Deductions (₦)"]) || 0;
       const activeLoan = await Loan.findOne({ userId: employee.userId, status: "Approved" });
@@ -907,8 +1144,8 @@ const addSalary = async (req, res) => {
         basicSalary: Number(row["Basic Salary (₦)"]) || 0,
         transportAllowance: Number(row["Transport Allowance (₦)"]) || 0,
         mealAllowance: Number(row["Meal Allowance (₦)"]) || 0,
-        overtimeHours:Number(row["Overtime Hours"]) || 0,
-        overtimeRate:Number(row["Overtime Rate (₦)"]) || 0,
+        overtimeHours: Number(row["Overtime Hours"]) || 0,
+        overtimeRate: Number(row["Overtime Rate (₦)"]) || 0,
         overTime: Number(row["Overtime Amount (₦)"]) || 0,
         employeePension: Number(row["Employee Pension (₦)"]) || 0,
         employerPension: Number(row["Employer Pension (₦)"]) || 0,
@@ -920,33 +1157,52 @@ const addSalary = async (req, res) => {
         totalDeductions: Number(row["Total Deductions (₦)"]) || 0,
         netSalary: Number(row["Net Salary (₦)"]) || 0,
         growthSalary: Number(row["Gross Salary (₦)"]) || 0,
-        month: new Date().toLocaleString("default", { month: "long" }),
-        year: new Date().getFullYear().toString(),
-        payDate:new Date().toLocaleString("payDate"),
+        month: monthNumber,
+        year: yearNumber,
+        payDate: new Date(),
         status: row["Status"] || "Pending",
       });
     }
 
     if (salaryData.length === 0) {
-      return res.status(400).json({ message: "No valid salary entries found." });
+      return res.status(400).json({ 
+        success: false,
+        message: "❌ No valid salary entries found or all entries already exist for the specified period." 
+      });
     }
 
+    // Insert salary data
     await Salary.insertMany(salaryData);
+    
     res.status(200).json({
       success: true,
-      message: "✅ Salary data uploaded successfully",
+      message: `✅ Salary data for ${getMonthName(monthNumber)} ${yearNumber} uploaded successfully`,
       count: salaryData.length,
+      period: {
+        month: monthNumber,
+        monthName: getMonthName(monthNumber),
+        year: yearNumber
+      }
     });
+
   } catch (err) {
     console.error("❌ Error uploading salary:", err);
     res.status(500).json({
+      success: false,
       message: "Failed to upload salary data",
       error: err.message,
     });
   }
 };
 
-
+// Helper function to get month name
+function getMonthName(monthNumber) {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  return months[monthNumber - 1] || 'Unknown';
+}
 
 // Get Employee Salary
 
@@ -1185,8 +1441,8 @@ const resetPassword = async (req, res) => {
 // Api To Approve Leave
 const approveHodLeave = async (req, res) => {
   try {
-    const { leaveId, relievingStaff } = req.body;
-
+    const { leaveId, relievingStaff, comment } = req.body;
+console.log("COMMENT RECEIVED:", comment);
     if (!leaveId || !relievingStaff) {
       return res.json({ success: false, message: 'Leave ID and Relieving Staff are required' });
     }
@@ -1202,6 +1458,7 @@ const approveHodLeave = async (req, res) => {
 
     leave.hodStatus = 'Approved';
     leave.relievingEId = relievingStaff;
+    leave.hodComments = comment
     leave.updatedAt = new Date();
 
     await leave.save();
@@ -1221,6 +1478,7 @@ const rejectHodLeave = async (req, res) => {
   try {
     const { leaveId } = req.body;
     console.log("Leave ID:", leaveId);
+    console.log("COMMENT RECEIVED:", comment);
     if (!leaveId) {
       return res.status(400).json({ success: false, message: 'Leave ID is required' });
     }
