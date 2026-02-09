@@ -151,10 +151,10 @@ const employee = () => {
       setType(item.type);
       setRent(item.rent);
       setRole(item.userId.role)
-const formattedjoinDate = new Date(item.joinDate).toISOString().split('T')[0];
-setJoinDate(formattedjoinDate);
+      const formattedjoinDate = new Date(item.joinDate).toISOString().split('T')[0];
+      setJoinDate(formattedjoinDate);
 
-setDuration(calculateDuration(formattedjoinDate));
+      setDuration(calculateDuration(formattedjoinDate));
       const formattedDob = new Date(item.dob).toISOString().split('T')[0];
       setDob(formattedDob);
       setGender(item.gender);
@@ -323,7 +323,7 @@ setDuration(calculateDuration(formattedjoinDate));
     });
 
     setFilteredEmployess(filtered);
-    
+
     setCurrentPage(1);
   }, [searchTerm, employees]);
 
@@ -1166,61 +1166,61 @@ setDuration(calculateDuration(formattedjoinDate));
 
                 {/* Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 text-start">
-                 {[
-                { label: "Name", value: selectedEmployee.userId?.name },
-                { label: "Email", value: selectedEmployee.userId?.email },
-                { label: "Staff ID", value: selectedEmployee.staffId },
-                { label: "Department", value: selectedEmployee.department?.name },
-                { label: "Designation", value: selectedEmployee.designation },
-                { label: "DOB", value: new Date(selectedEmployee.dob).toLocaleDateString() },
-                { label: "Phone", value: selectedEmployee.phone },
-                { label: "Gender", value: selectedEmployee.gender },
-                { label: "Marital Status", value: selectedEmployee.maritalStatus },
-                { label: "State", value: selectedEmployee.state },
-                { label: "Address", value: selectedEmployee.address },
-                { label: "Leave Days", value: selectedEmployee.leaveDays },
-                { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
-                { label: "duration", value: selectedEmployee.duration },
-                { label: "Experience", value: selectedEmployee.experience },
-                { label: "Qualification", value: selectedEmployee.qualification },
-                { label: "Role", value: selectedEmployee.userId?.role },
-                { label: "Employee Type", value: selectedEmployee.type },
-                { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set' },
-                { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
-                { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
-                { label: "Tax ID", value: selectedEmployee.taxIdentificationNumber || 'Not provided' },
-                { label: "Bank Name", value: selectedEmployee.bankAccount?.bankName || 'Not provided' },
-                { label: "Account Number", value: selectedEmployee.bankAccount?.accountNumber || 'Not provided' },
-                { label: "Account Name", value: selectedEmployee.bankAccount?.accountName || 'Not provided' },
-                {
-                  label: "Employee Status",
-                  value: (
-                    <span className={selectedEmployee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                      {selectedEmployee.status ? "Active" : "Inactive"}
-                    </span>
-                  ),
-                },
-                {
-                  label: "CV",
-                  value: selectedEmployee.cv ? (
-                    <a
-                      href={selectedEmployee.cv}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline block"
-                    >
-                      View Uploaded CV
-                    </a>
-                  ) : (
-                    <span className="text-red-500">No CV uploaded</span>
-                  ),
-                }
-              ].map((item, index) => (
-                <div key={index} className="flex border-b py-2">
-                  <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
-                  <div className="text-gray-800 break-words">{item.value}</div>
-                </div>
-              ))}
+                  {[
+                    { label: "Name", value: selectedEmployee.userId?.name },
+                    { label: "Email", value: selectedEmployee.userId?.email },
+                    { label: "Staff ID", value: selectedEmployee.staffId },
+                    { label: "Department", value: selectedEmployee.department?.name },
+                    { label: "Designation", value: selectedEmployee.designation },
+                    { label: "DOB", value: new Date(selectedEmployee.dob).toLocaleDateString() },
+                    { label: "Phone", value: selectedEmployee.phone },
+                    { label: "Gender", value: selectedEmployee.gender },
+                    { label: "Marital Status", value: selectedEmployee.maritalStatus },
+                    { label: "State", value: selectedEmployee.state },
+                    { label: "Address", value: selectedEmployee.address },
+                    { label: "Leave Days", value: selectedEmployee.leaveDays },
+                    { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
+                    { label: "duration", value: selectedEmployee.duration },
+                    { label: "Experience", value: selectedEmployee.experience },
+                    { label: "Qualification", value: selectedEmployee.qualification },
+                    { label: "Role", value: selectedEmployee.userId?.role },
+                    { label: "Employee Type", value: selectedEmployee.type },
+                    { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set' },
+                    { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
+                    { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
+                    { label: "Tax ID", value: selectedEmployee.taxIdentificationNumber || 'Not provided' },
+                    { label: "Bank Name", value: selectedEmployee.bankAccount?.bankName || 'Not provided' },
+                    { label: "Account Number", value: selectedEmployee.bankAccount?.accountNumber || 'Not provided' },
+                    { label: "Account Name", value: selectedEmployee.bankAccount?.accountName || 'Not provided' },
+                    {
+                      label: "Employee Status",
+                      value: (
+                        <span className={selectedEmployee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                          {selectedEmployee.status ? "Active" : "Inactive"}
+                        </span>
+                      ),
+                    },
+                    {
+                      label: "CV",
+                      value: selectedEmployee.cv ? (
+                        <a
+                          href={selectedEmployee.cv}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline block"
+                        >
+                          View Uploaded CV
+                        </a>
+                      ) : (
+                        <span className="text-red-500">No CV uploaded</span>
+                      ),
+                    }
+                  ].map((item, index) => (
+                    <div key={index} className="flex border-b py-2">
+                      <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
+                      <div className="text-gray-800 break-words">{item.value}</div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Back Button */}
