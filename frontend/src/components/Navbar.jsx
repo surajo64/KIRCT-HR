@@ -225,7 +225,7 @@ const Navbar = () => {
           {/* Logout */}
           <button
             onClick={logout}
-            className="bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-6 py-2 rounded-full transition"
+            className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-6 py-2 rounded-full transition"
           >
             Logout
           </button>
@@ -311,7 +311,7 @@ const Navbar = () => {
           
           <button
             onClick={logout}
-            className="bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-6 py-2 rounded-full transition"
+            className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-6 py-2 rounded-full transition"
           >
             Logout
           </button>
