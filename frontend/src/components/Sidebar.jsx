@@ -65,19 +65,9 @@ const Sidebar = () => {
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <h1 className="text-lg font-semibold text-gray-800">
-            {user?.role === "admin" ? "Admin Panel" :
-              user?.role === "employee" ? "Employee Portal" :
-                user?.role === "HOD" ? "HOD Dashboard" : "Dashboard"}
-          </h1>
+        
         </div>
-        {user && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              {user.name?.charAt(0)?.toUpperCase() || "U"}
-            </div>
-          </div>
-        )}
+       
       </div>
 
       {/* Sidebar Container */}
