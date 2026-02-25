@@ -13,6 +13,8 @@ const employee = () => {
 
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [filterDepartment, setFilterDepartment] = useState('all');
+  const [filterQualification, setFilterQualification] = useState('all');
   const [report, setReport] = useState([]);
   const [viewClicked, setViewClicked] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -134,8 +136,10 @@ const employee = () => {
       setShowDetailModal(false)
       setSelectedEmployee(null);
       setEmployeeDetails([]);
-      setFilterStatus('')
-      setFilterType('')
+      setFilterStatus('all')
+      setFilterType('all')
+      setFilterDepartment('all')
+      setFilterQualification('all')
       getAllEmployees();
       setIsLoading(false);
     }, 300);
@@ -342,9 +346,15 @@ const employee = () => {
     }
   }, [token, searchTerm]);
 
-  const fetchEmployeesByStatus = async (status, type) => {
+  const fetchEmployeesByStatus = async (status, type, department, qualification) => {
     try {
-      const { data } = await axios.get(`${backendUrl}/api/admin/employees?status=${status}&type=${type}`, {
+      const queryParams = new URLSearchParams();
+      if (status !== 'all') queryParams.append('status', status);
+      if (type !== 'all') queryParams.append('type', type);
+      if (department !== 'all') queryParams.append('department', department);
+      if (qualification !== 'all') queryParams.append('qualification', qualification);
+      
+      const { data } = await axios.get(`${backendUrl}/api/admin/employees?${queryParams.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) {
@@ -1035,22 +1045,21 @@ const employee = () => {
             {!selectedEmployee ? (
               <>
                 {/* Filter Dropdown with View Button */}
-                <div className="flex justify-center items-center gap-2 mb-4">
+                <div className="flex flex-wrap justify-center items-center gap-2 mb-4">
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="p-2 border border-green-300 rounded"
+                    className="p-2 border border-green-300 rounded text-sm"
                   >
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
-
                   </select>
 
                   <select
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
-                    className="p-2 border border-green-300 rounded"
+                    className="p-2 border border-green-300 rounded text-sm"
                   >
                     <option value="all">All Types</option>
                     <option value="permanent">Permanent</option>
@@ -1058,17 +1067,45 @@ const employee = () => {
                     <option value="consultant">Consultant</option>
                   </select>
 
+                  <select
+                    value={filterDepartment}
+                    onChange={(e) => setFilterDepartment(e.target.value)}
+                    className="p-2 border border-green-300 rounded text-sm"
+                  >
+                    <option value="all">All Departments</option>
+                    {department.map((dept) => (
+                      <option key={dept._id} value={dept._id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterQualification}
+                    onChange={(e) => setFilterQualification(e.target.value)}
+                    className="p-2 border border-green-300 rounded text-sm"
+                  >
+                    <option value="all">All Qualifications</option>
+                    <option value="SSCE">SSCE</option>
+                    <option value="ND">National Diploma</option>
+                    <option value="NCE">Nigerian Certificate in Education</option>
+                    <option value="HND">Higher National Diploma</option>
+                    <option value="B.sc">Bachelor's Degree</option>
+                    <option value="M.Sc">Master's Degrees</option>
+                    <option value="Ph.D">Doctorate Degrees</option>
+                  </select>
+
                   <button
                     onClick={() => {
                       setIsLoading(true);
 
                       setTimeout(() => {
-                        fetchEmployeesByStatus(filterStatus, filterType);
+                        fetchEmployeesByStatus(filterStatus, filterType, filterDepartment, filterQualification);
                         setViewClicked(true); // Set to true after clicking
                         setIsLoading(false);
                       }, 300);
                     }}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm"
                   >
                     View
                   </button>
@@ -1079,11 +1116,13 @@ const employee = () => {
                   <h2 className="text-lg sm:text-xl font-bold mb-4 text-green-700 text-center sm:text-center">
                     List of&nbsp;
                     <span className="text-green-700">
-                      {filterStatus === "all" && filterType === "all"
+                      {filterStatus === "all" && filterType === "all" && filterDepartment === "all" && filterQualification === "all"
                         ? "All"
                         : [
                           filterStatus !== "all" ? filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1) : null,
-                          filterType !== "all" ? filterType.charAt(0).toUpperCase() + filterType.slice(1) : null
+                          filterType !== "all" ? filterType.charAt(0).toUpperCase() + filterType.slice(1) : null,
+                          filterDepartment !== "all" ? department.find(d => d._id === filterDepartment)?.name : null,
+                          filterQualification !== "all" ? filterQualification : null
                         ]
                           .filter(Boolean)
                           .join(" and ")
@@ -1101,6 +1140,8 @@ const employee = () => {
                           <th className="border p-2">Staff ID</th>
                           <th className="border p-2">Name</th>
                           <th className="border p-2">Email</th>
+                          <th className="border p-2">Department</th>
+                          <th className="border p-2">Qualification</th>
                           <th className="border p-2">Status</th>
                           <th className="border p-2">Type</th>
                           <th className="border p-2">Action</th>
@@ -1113,6 +1154,8 @@ const employee = () => {
                             <td className="border p-2">{emp.staffId}</td>
                             <td className="border p-2">{emp.userId?.name}</td>
                             <td className="border p-2">{emp.userId?.email}</td>
+                            <td className="border p-2">{emp.department?.name || 'N/A'}</td>
+                            <td className="border p-2">{emp.qualification || 'N/A'}</td>
                             <td className="border p-2">
                               {emp.status ? (
                                 <span className="text-green-600 font-semibold">Active</span>

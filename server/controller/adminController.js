@@ -332,7 +332,7 @@ const getAllEmployees = async (req, res) => {
 // GET /api/employees?status=all|active|inactive
 const getEmployeesByStatus = async (req, res) => {
   try {
-    const { status, type } = req.query;
+    const { status, type, department, qualification } = req.query;
 
     let filter = {};
 
@@ -346,6 +346,16 @@ const getEmployeesByStatus = async (req, res) => {
     // Filter by type of employee
     if (type && type !== "all") {
       filter.type = type.toLowerCase(); // e.g., "permanent", "locum"
+    }
+
+    // Filter by department
+    if (department && department !== "all") {
+      filter.department = department;
+    }
+
+    // Filter by qualification
+    if (qualification && qualification !== "all") {
+      filter.qualification = qualification;
     }
 
     const employees = await Employee.find(filter)
