@@ -362,6 +362,9 @@ const employee = () => {
       }
     } catch (err) {
       console.error("Failed to fetch employees:", err);
+      toast.error("Failed to fetch employees");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1098,12 +1101,8 @@ const employee = () => {
                   <button
                     onClick={() => {
                       setIsLoading(true);
-
-                      setTimeout(() => {
-                        fetchEmployeesByStatus(filterStatus, filterType, filterDepartment, filterQualification);
-                        setViewClicked(true); // Set to true after clicking
-                        setIsLoading(false);
-                      }, 300);
+                      fetchEmployeesByStatus(filterStatus, filterType, filterDepartment, filterQualification);
+                      setViewClicked(true); // Set to true after clicking
                     }}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm"
                   >
