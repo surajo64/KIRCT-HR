@@ -410,6 +410,29 @@ const employee = () => {
     return `${years} year(s) ${months} month(s) ${days} day(s)`;
   };
 
+  // Format employee type values for display (maps stored values to human-friendly labels)
+  const formatTypeDisplay = (t) => {
+    if (!t) return '';
+    const map = {
+      permanent: 'Permanent',
+      locum: 'Locum/Contract',
+      consultant: 'Consultant',
+      secondment: 'Secondment',
+      internship: 'Internship',
+      siwes: 'SIWES',
+      voluntary: 'Voluntary',
+      'post-doctoral-fellow': 'Post Doctoral Fellow',
+      sabbatical: 'Sabbatical'
+    };
+    if (map[t]) return map[t];
+    // fallback: replace -/_ with spaces and capitalize words
+    return t
+      .replace(/[-_]+/g, ' ')
+      .split(' ')
+      .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(' ');
+  };
+
 
   const handleJoinDateChange = (e) => {
     const value = e.target.value;
@@ -747,6 +770,12 @@ const employee = () => {
                       <option value="permanent">Permanent</option>
                       <option value="locum">Locum/Contract</option>
                       <option value="consultant">Consultant</option>
+                      <option value="secondment">Secondment</option>
+                      <option value="internship">Internship</option>
+                      <option value="siwes">SIWES</option>
+                      <option value="voluntary">Voluntary</option>
+                      <option value="post-doctoral-fellow">Post-Doctoral Fellow</option>
+                      <option value="sabbatical">Sabbatical</option>
                     </select>
                   </div>
 
@@ -955,7 +984,7 @@ const employee = () => {
                 { label: "Experience", value: selectedEmployee.experience },
                 { label: "Qualification", value: selectedEmployee.qualification },
                 { label: "Role", value: selectedEmployee.userId?.role },
-                { label: "Employee Type", value: selectedEmployee.type },
+                { label: "Employee Type", value: formatTypeDisplay(selectedEmployee.type) },
                 { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set' },
                 { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
                 { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },
@@ -1068,6 +1097,12 @@ const employee = () => {
                     <option value="permanent">Permanent</option>
                     <option value="locum">Locum/Contract</option>
                     <option value="consultant">Consultant</option>
+                    <option value="secondment">Secondment</option>
+                    <option value="internship">Internship</option>
+                    <option value="siwes">SIWES</option>
+                    <option value="voluntary">Voluntary</option>
+                    <option value="post-doctoral-fellow">Post-Doctoral Fellow</option>
+                    <option value="sabbatical">Sabbatical</option>
                   </select>
 
                   <select
@@ -1119,7 +1154,7 @@ const employee = () => {
                         ? "All"
                         : [
                           filterStatus !== "all" ? filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1) : null,
-                          filterType !== "all" ? filterType.charAt(0).toUpperCase() + filterType.slice(1) : null,
+                          filterType !== "all" ? formatTypeDisplay(filterType) : null,
                           filterDepartment !== "all" ? department.find(d => d._id === filterDepartment)?.name : null,
                           filterQualification !== "all" ? filterQualification : null
                         ]
@@ -1162,7 +1197,7 @@ const employee = () => {
                                 <span className="text-red-600 font-semibold">Inactive</span>
                               )}
                             </td>
-                            <td className="border p-2">{emp.type}</td>
+                            <td className="border p-2">{formatTypeDisplay(emp.type)}</td>
                             <td className="border p-2">
                               <button
                                 onClick={() => {
@@ -1226,7 +1261,7 @@ const employee = () => {
                     { label: "Experience", value: selectedEmployee.experience },
                     { label: "Qualification", value: selectedEmployee.qualification },
                     { label: "Role", value: selectedEmployee.userId?.role },
-                    { label: "Employee Type", value: selectedEmployee.type },
+                    { label: "Employee Type", value: formatTypeDisplay(selectedEmployee.type) },
                     { label: "Annual Rent", value: selectedEmployee.rent ? `₦${selectedEmployee.rent.toLocaleString()}` : 'Not set' },
                     { label: "Basic Salary", value: selectedEmployee.basicSalary ? `₦${selectedEmployee.basicSalary.toLocaleString()}` : 'Not set' },
                     { label: "Overtime Rate", value: selectedEmployee.overtimeRate ? `₦${selectedEmployee.overtimeRate.toLocaleString()}/hr` : 'Not set' },

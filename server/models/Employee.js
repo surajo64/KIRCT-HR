@@ -14,7 +14,7 @@ const employeeSchema = new mongoose.Schema({
   maritalStatus: { type: String },
   designation: { type: String },
   experience: { type: String },
-  type: { type: String, enum: ["permanent", "locum", "consultant"], required: true },
+  type: { type: String, enum: ["permanent", "locum", "consultant", "secondment", "internship", "siwes", "voluntary", "post-doctoral-fellow", "sabbatical"], required: true },
   qualification: { type: String },
   address: { type: String },
   department: { type: Schema.Types.ObjectId, ref: 'Department', required: true },
