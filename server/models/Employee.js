@@ -20,6 +20,8 @@ const employeeSchema = new mongoose.Schema({
   department: { type: Schema.Types.ObjectId, ref: 'Department', required: true },
   state: { type: String, required: true },
   status: { type: Boolean, default: true },
+  deactivationReason: { type: String },
+  deactivationDate: { type: Date },
   phone: { type: String, required: true },
   rent: { type: String, required: false },
   cv: { type: String }, // 🆕 CV attachment

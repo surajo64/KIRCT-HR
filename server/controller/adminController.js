@@ -273,7 +273,7 @@ const updateEmployee = async (req, res) => {
 // Update employee status to false (deactivate employee)
 const deactivateEmployee = async (req, res) => {
   try {
-    const { employeeId } = req.body;
+    const { employeeId, reason } = req.body;
 
     if (!employeeId) {
       return res.status(400).json({ success: false, message: "Employee ID is required" });
@@ -286,9 +286,25 @@ const deactivateEmployee = async (req, res) => {
     }
 
     // Toggle status
+    const newStatus = !employee.status;
+
+    // If we're deactivating, require a reason
+    if (newStatus === false) {
+      if (!reason || String(reason).trim() === "") {
+        return res.status(400).json({ success: false, message: "Reason for deactivation is required" });
+      }
+    }
+
+    const updateFields = {
+      status: newStatus,
+      // when deactivating, set reason and date; when activating, clear them
+      deactivationReason: newStatus ? null : reason,
+      deactivationDate: newStatus ? null : new Date(),
+    };
+
     const updatedEmployee = await Employee.findByIdAndUpdate(
       employeeId,
-      { status: !employee.status },
+      updateFields,
       { new: true }
     );
 

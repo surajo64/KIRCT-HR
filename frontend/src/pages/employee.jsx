@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import axios from 'axios';
 import { toast } from "react-toastify";
 import LoadingOverlay from '../components/loadingOverlay.jsx';
+import Tooltip from '../components/Tooltip.jsx';
 
 const employee = () => {
   const { token, backendUrl, getAllDepartment, department,
@@ -21,6 +22,7 @@ const employee = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeeDetails, setEmployeeDetails] = useState([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deactivationReason, setDeactivationReason] = useState('');
   const [designationOptions, setDesignationOptions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5
@@ -294,21 +296,39 @@ const employee = () => {
     }
   };
 
-  const handleDeactivate = async () => {
-    const { data } = await axios.post(`${backendUrl}/api/admin/deactivate-employee`, {
-      employeeId: confirmDeleteId,
-    }, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      }
-    });
+  const handleDeactivate = async (idParam) => {
+    const idToUse = idParam || confirmDeleteId;
+    const emp = employees.find(emp => emp._id === idToUse);
 
-    if (data.success) {
-      toast.success(data.message);
-      setConfirmDeleteId(null);
-      getAllEmployees();
-    } else {
-      toast.error("Failed to Deactivate Employee");
+    // If employee is active, we are deactivating and must have a reason
+    if (emp?.status) {
+      if (!deactivationReason || deactivationReason.trim() === '') {
+        toast.error('Reason for deactivation is required');
+        return;
+      }
+    }
+
+    try {
+      const { data } = await axios.post(`${backendUrl}/api/admin/deactivate-employee`, {
+        employeeId: idToUse,
+        reason: emp?.status ? deactivationReason : undefined,
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        setConfirmDeleteId(null);
+        setDeactivationReason('');
+        getAllEmployees();
+      } else {
+        toast.error(data.message || "Failed to update employee status");
+      }
+    } catch (error) {
+      console.error('Deactivate error', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to update employee status');
     }
   };
 
@@ -503,9 +523,14 @@ const employee = () => {
                 {new Date(item.dob).toLocaleDateString()}
               </p>
 
-              <p className={`hidden lg:block text-sm font-semibold ${item.status ? 'text-green-600' : 'text-red-600'
-                }`}>
-                {item.status ? 'Active' : 'Inactive'}
+              <p className="hidden lg:block text-sm font-semibold">
+                {item.status ? (
+                  <span className="text-green-600">Active</span>
+                ) : (
+                  <Tooltip text={item.deactivationReason || 'No reason provided'}>
+                    <span className="text-red-600" style={{ cursor: 'help' }}>Inactive</span>
+                  </Tooltip>
+                )}
               </p>
 
               <div className="flex justify-end gap-2 flex-wrap">
@@ -992,14 +1017,18 @@ const employee = () => {
                 { label: "Bank Name", value: selectedEmployee.bankAccount?.bankName || 'Not provided' },
                 { label: "Account Number", value: selectedEmployee.bankAccount?.accountNumber || 'Not provided' },
                 { label: "Account Name", value: selectedEmployee.bankAccount?.accountName || 'Not provided' },
-                {
-                  label: "Employee Status",
-                  value: (
-                    <span className={selectedEmployee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                      {selectedEmployee.status ? "Active" : "Inactive"}
-                    </span>
-                  ),
-                },
+                    {
+                      label: "Employee Status",
+                      value: (
+                        selectedEmployee.status ? (
+                          <span className="text-green-600 font-semibold">Active</span>
+                        ) : (
+                          <Tooltip text={selectedEmployee.deactivationReason || 'No reason provided'}>
+                            <span className="text-red-600 font-semibold" style={{ cursor: 'help' }}>Inactive</span>
+                          </Tooltip>
+                        )
+                      ),
+                    },
                 {
                   label: "CV",
                   value: selectedEmployee.cv ? (
@@ -1036,9 +1065,22 @@ const employee = () => {
                 ? "Are you sure you want to deactivate this employee?"
                 : "Are you sure you want to activate this employee?"}
             </p>
+            {employees.find(emp => emp._id === confirmDeleteId)?.status && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Reason for Deactivation</label>
+                <textarea
+                  value={deactivationReason}
+                  onChange={(e) => setDeactivationReason(e.target.value)}
+                  placeholder="Provide reason for deactivating this employee"
+                  className="w-full p-2 border border-gray-300 rounded"
+                  rows={3}
+                />
+              </div>
+            )}
+
             <div className="flex justify-between">
               <button
-                onClick={() => setConfirmDeleteId(null)}
+                onClick={() => { setConfirmDeleteId(null); setDeactivationReason(''); }}
                 className="bg-gray-300 px-8 py-2 rounded-full hover:bg-gray-400"
               >
                 Cancel
@@ -1194,7 +1236,9 @@ const employee = () => {
                               {emp.status ? (
                                 <span className="text-green-600 font-semibold">Active</span>
                               ) : (
-                                <span className="text-red-600 font-semibold">Inactive</span>
+                                <Tooltip text={emp.deactivationReason || 'No reason provided'}>
+                                  <span className="text-red-600 font-semibold" style={{ cursor: 'help' }}>Inactive</span>
+                                </Tooltip>
                               )}
                             </td>
                             <td className="border p-2">{formatTypeDisplay(emp.type)}</td>
@@ -1272,9 +1316,13 @@ const employee = () => {
                     {
                       label: "Employee Status",
                       value: (
-                        <span className={selectedEmployee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                          {selectedEmployee.status ? "Active" : "Inactive"}
-                        </span>
+                        selectedEmployee.status ? (
+                          <span className="text-green-600 font-semibold">Active</span>
+                        ) : (
+                          <Tooltip text={selectedEmployee.deactivationReason || 'No reason provided'}>
+                            <span className="text-red-600 font-semibold" style={{ cursor: 'help' }}>Inactive</span>
+                          </Tooltip>
+                        )
                       ),
                     },
                     {
