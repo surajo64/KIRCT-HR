@@ -19,6 +19,7 @@ import Attendance from "../models/attendance.js";
 import Loan from "../models/loan.js";
 import Payroll from "../models/Payroll.js";
 import axios from 'axios';
+import sgMail from '@sendgrid/mail'
 
 
 
@@ -1520,8 +1521,8 @@ export default changePassword;
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
 
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -1532,57 +1533,29 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // Prepare email credentials (remove any accidental spaces)
-    const emailUser = process.env.EMAIL_USER;
-    const emailFrom = process.env.EMAIL_FROM || emailUser; // use custom sender if provided
-    const emailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '';
- 
-    if (!emailUser || (!emailPass && !process.env.SENDGRID_API_KEY)) {
-      console.error('Email configuration missing: check EMAIL_USER and EMAIL_PASS (or SENDGRID_API_KEY)');
+    // Prepare email
+    const emailFrom = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    if (!process.env.SENDGRID_API_KEY || !emailFrom) {
+      console.error('SendGrid API key or sender email missing in environment variables');
+      return res.status(500).json({ message: 'Email configuration missing' });
     }
 
-    // Support SendGrid via API key if provided, otherwise use Gmail SMTP
-    const sendgridKey = process.env.SENDGRID_API_KEY ? process.env.SENDGRID_API_KEY.replace(/\s+/g, '') : '';
-    let transporter;
-
-    if (sendgridKey) {
-      // Use SendGrid SMTP (user: 'apikey', pass: SENDGRID_API_KEY)
-      transporter = nodemailer.createTransport({
-        host: 'smtp.sendgrid.net',
-        port: 465,
-        secure: true,
-        auth: { user: 'apikey', pass: sendgridKey },
-      });
-      console.log('Using SendGrid SMTP for sending emails');
-    } else {
-      // Explicit Gmail SMTP (works with App Password)
-      transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: {
-          user: emailUser,
-          pass: emailPass,
-        },
-        tls: { rejectUnauthorized: false },
-      });
-      console.log('Using Gmail SMTP for sending emails');
-    }
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${token}`;
-    const mailOptions = {
+    const msg = {
       to: user.email,
-      from: emailFrom, // must match verified sender (SendGrid) or Gmail user
+      from: emailFrom, // must be a verified sender in SendGrid
       subject: 'Password Reset Request',
-      text: `Hello: ${user.name}\n\nYou requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n`,
+      text: `Hello ${user.name},\n\nYou requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n`,
     };
 
-    // Verify transporter and send mail
+    // Send email
     try {
-      await transporter.verify();
-      await transporter.sendMail(mailOptions);
+      await sgMail.send(msg);
+      console.log(`SendGrid email sent to ${user.email}`);
     } catch (mailError) {
-      console.error('Mail send error:', mailError);
+      console.error('SendGrid send error:', mailError);
       return res.status(500).json({ message: 'Failed to send reset email' });
     }
 
@@ -1592,6 +1565,7 @@ const forgotPassword = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // reset passowrd
 const resetPassword = async (req, res) => {
@@ -1618,6 +1592,8 @@ const resetPassword = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Api To Approve Leave
 const approveHodLeave = async (req, res) => {
@@ -2293,8 +2269,113 @@ const approveRejectLoan = async (req, res) => {
   }
 };
 
+// API To Get HOD Dashboard
+const getHodDashboard = async (req, res) => {
+  try {
+    const userId = req.userId;
 
+    // Step 1: Get HOD's profile and verify designation
+    const hodProfile = await Employee.findOne({ userId })
+      .populate('department', 'name')
+      .populate('userId', 'name email role profileImage');
 
+    if (!hodProfile) {
+      return res.status(404).json({ success: false, message: 'HOD profile not found' });
+    }
+
+    if (hodProfile.designation !== 'HOD') {
+      return res.status(403).json({ success: false, message: 'Access denied. Only HODs can access this.' });
+    }
+
+    const departmentId = hodProfile.department._id;
+
+    // Step 2: Get all employees in HOD's department
+    const departmentEmployees = await Employee.find({ department: departmentId });
+    const employeeUserIds = departmentEmployees.map(emp => emp.userId);
+
+    // Step 3: Get leaves from department employees
+    const leaves = await Leave.find({ userId: { $in: employeeUserIds } })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Step 4: Get HOD's latest salary
+    const latestSalary = await Salary.findOne({ employeeId: hodProfile._id })
+      .sort({ year: -1, payDate: -1 })
+      .limit(1);
+
+    // Step 5: Get department statistics
+    const totalEmployees = departmentEmployees.length;
+    
+    // Get employees on leave today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(today);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    const leavesToday = await Leave.find({
+      userId: { $in: employeeUserIds },
+      status: 'approved',
+      startDate: { $lte: today },
+      endDate: { $gte: today }
+    }).countDocuments();
+
+    const departmentStats = {
+      totalEmployees,
+      onLeaveToday: leavesToday
+    };
+
+    // Step 6: Get pending loan requests for the department
+    const pendingLoans = await Loan.find({
+      userId: { $in: employeeUserIds },
+      status: 'pending'
+    }).countDocuments();
+
+    const pendingRequests = {
+      loans: pendingLoans
+    };
+
+    // Step 7: Get HOD's performance/KPI data
+    const hodKpis = await Kpi.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    let performance = null;
+    if (hodKpis.length > 0) {
+      const latestKpi = hodKpis[0];
+      
+      // Get HOD's evaluation data
+      const hodEval = await Evaluation.findOne({ kpiId: latestKpi._id });
+      
+      performance = {
+        rating: hodEval?.scores?.overall || 0,
+        projectsCompleted: latestKpi.scores?.projectsCompleted || 0,
+        tasksCompleted: latestKpi.scores?.tasksCompleted || 0,
+        attendance: latestKpi.scores?.attendance || 0,
+        teamRating: hodEval?.scores?.teamPerformance || 0
+      };
+    }
+
+    // Step 8: Get recent messages (empty for now, can be implemented later)
+    const recentMessages = [];
+
+    // Return combined dashboard data
+    return res.status(200).json({
+      success: true,
+      data: {
+        profile: hodProfile,
+        leaves,
+        latestSalary: latestSalary || null,
+        departmentStats,
+        pendingRequests,
+        recentMessages,
+        performance
+      }
+    });
+  } catch (error) {
+    console.error("HOD Dashboard fetch error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
 
 
 
@@ -2309,6 +2390,6 @@ export {
   getAllevaluations, updateEvaluation, getUsers, getEmployeeDashboardData, fetchEmployees,
   submitKpi, getKpi, hodEvaluation, getKpiByDepartment, adminEvaluation, updateAdminEvaluation,
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
-  applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan,getAllUsers,
+  applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
 
 }

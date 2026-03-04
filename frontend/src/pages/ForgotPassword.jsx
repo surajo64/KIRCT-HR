@@ -1,4 +1,5 @@
 import React, { useContext, useState } from 'react';
+import LoadingOverlay from '../components/loadingOverlay';
 import axios from 'axios';
 import { useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
@@ -7,11 +8,13 @@ import { AppContext } from '../context/AppContext';
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { backendUrl } = useContext(AppContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const { data } = await axios.post(`${backendUrl}/api/admin/forgot-password`, { email });
       if (data.success) {
@@ -20,11 +23,14 @@ const ForgotPassword = () => {
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error sending reset email');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center min-h-screen p-4">
+    <div className="flex flex-col items-center min-h-screen p-4 relative">
+      {loading && <LoadingOverlay />}
       {!emailSent ? (
         <>
           <h2 className="text-2xl font-semibold mb-4 text-center">Forgot Password</h2>
@@ -37,8 +43,8 @@ const ForgotPassword = () => {
               required
               className="w-full p-2 border rounded-md mb-5"
             />
-            <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition-colors">
-              Send Reset Link
+            <button type="submit" disabled={loading} className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
           </form>
           <button 

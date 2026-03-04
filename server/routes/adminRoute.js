@@ -17,7 +17,7 @@ import { addDepartment, addEmployee, addLeave, addSalary, adminEvaluation, apply
     rejectHodLeave, 
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
-    uploadAttendance,} from '../controller/adminController.js';
+    uploadAttendance, getHodDashboard,} from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
 
 
@@ -59,6 +59,7 @@ adminRouter.post('/leave-resumed',authUser, resumeLeave );
 adminRouter.get('/hod-leave', authUser, getLeaveToHod);
 adminRouter.post('/hod-approve',authUser, approveHodLeave );
 adminRouter.post('/hod-reject',authUser, rejectHodLeave );
+adminRouter.get('/hod-dashboard', authUser, getHodDashboard);
 
 
 
