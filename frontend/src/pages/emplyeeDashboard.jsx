@@ -25,7 +25,10 @@ const EmployeeDashboard = () => {
     leaves: [],
     currentMonthSalary: null,
     attendance: null,
-    bonuses: []
+    bonuses: [],
+    loans: [],
+    kpis: [],
+    unreadNotifications: 0
   });
 
   const [loading, setLoading] = useState(true);
@@ -33,7 +36,7 @@ const EmployeeDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`${backendUrl}/api/employee/dashboard`, {
+      const { data } = await axios.get(`${backendUrl}/api/admin/employee-dashboard`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -115,6 +118,8 @@ const EmployeeDashboard = () => {
             bg="bg-green-100"
             textColor="text-green-600"
           />
+
+
         </div>
       </div>
 
@@ -152,7 +157,7 @@ const EmployeeDashboard = () => {
             <InfoItem label="Employee ID" value={dashboardData.profile?.staffId || 'N/A'} />
             <InfoItem label="Position" value={dashboardData.profile?.designation || 'N/A'} />
             <InfoItem label="Join Date" value={dashboardData.profile?.joinDate || 'N/A'} />
-            <InfoItem label="Total Bonuses" value={totalBonuses.toString()} />
+            <InfoItem label="Unread Msgs" value={dashboardData.unreadNotifications?.toString() || '0'} />
           </div>
         </div>
       </div>
@@ -182,11 +187,10 @@ const EmployeeDashboard = () => {
                     {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
                   </p>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  leave.status === 'approved' ? 'bg-green-100 text-green-800' :
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${leave.status === 'approved' ? 'bg-green-100 text-green-800' :
                   leave.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
+                    'bg-red-100 text-red-800'
+                  }`}>
                   {leave.status}
                 </span>
               </div>
@@ -197,29 +201,51 @@ const EmployeeDashboard = () => {
         )}
       </div>
 
-      {/* Recent Bonuses */}
+      {/* Recent Loans */}
       <div className="mt-6 bg-white rounded-2xl shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Bonuses</h3>
-        {dashboardData.bonuses?.length > 0 ? (
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Loan Summary</h3>
+        {dashboardData.loans?.length > 0 ? (
           <div className="space-y-3">
-            {dashboardData.bonuses.slice(0, 3).map((bonus, index) => (
+            {dashboardData.loans.slice(0, 3).map((loan, index) => (
               <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{bonus.name || bonus.type}</p>
-                  <p className="text-xs text-gray-500">Year: {bonus.year}</p>
+                  <p className="text-sm font-medium text-gray-800">₦{loan.amount.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">Reason: {loan.reason}</p>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  bonus.status === 'paid' ? 'bg-green-100 text-green-800' :
-                  bonus.status === 'processed' ? 'bg-blue-100 text-blue-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {bonus.status}
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${loan.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                  loan.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                  {loan.status}
                 </span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">No bonuses found</p>
+          <p className="text-sm text-gray-500">No active loans found</p>
+        )}
+      </div>
+
+      {/* Performance/KPIs */}
+      <div className="mt-6 bg-white rounded-2xl shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Performance (KPIs)</h3>
+        {dashboardData.kpis?.length > 0 ? (
+          <div className="space-y-3">
+            {dashboardData.kpis.slice(0, 3).map((kpi, index) => (
+              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{kpi.month} {kpi.year}</p>
+                  <p className="text-xs text-gray-500">Score: {kpi.total}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-blue-600">{kpi.grade}</p>
+                  <p className="text-xs text-gray-500">{kpi.comments?.substring(0, 30)}...</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No performance records found</p>
         )}
       </div>
 

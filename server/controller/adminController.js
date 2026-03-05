@@ -21,15 +21,16 @@ import Payroll from "../models/Payroll.js";
 import BonusModel from "../models/BonusModel.js";
 import axios from 'axios';
 import sgMail from '@sendgrid/mail'
+import Message from "../models/message.js";
 
 
 
 const addEmployee = async (req, res) => {
   try {
     const {
-      name, email, phone, department,rent,
+      name, email, phone, department, rent,
       designation, role, state,
-      maritalStatus, dob, joinDate,duration,leaveDays,
+      maritalStatus, dob, joinDate, duration, leaveDays,
       gender, staffId, address, password,
       experience, qualification, type,
       // Payroll fields
@@ -129,10 +130,10 @@ const addEmployee = async (req, res) => {
 
   } catch (error) {
     console.log('✅ CLOUDINARY CONFIG TEST:', {
-  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
-  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'Loaded ✅' : 'Missing ❌'
-});
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ? 'Loaded ✅' : 'Missing ❌'
+    });
     console.error("Register Employee Error:", error);
     res.status(500).json({
       success: false,
@@ -709,11 +710,11 @@ const addLeave = async (req, res) => {
         { from: { $lte: toDate }, to: { $gte: fromDate } },
         ...(isSplit && from2 && to2
           ? [
-              {
-                from: { $lte: new Date(to2) },
-                to: { $gte: new Date(from2) },
-              },
-            ]
+            {
+              from: { $lte: new Date(to2) },
+              to: { $gte: new Date(from2) },
+            },
+          ]
           : []),
       ],
     });
@@ -990,7 +991,7 @@ const approveLeave = async (req, res) => {
 // Reject Leave
 const rejectLeave = async (req, res) => {
   try {
-    const { leaveId,comment } = req.body;
+    const { leaveId, comment } = req.body;
     console.log("Leave ID:", leaveId);
     console.log("COMMENT RECEIVED:", comment);
     if (!leaveId) {
@@ -1078,7 +1079,7 @@ const addSalary = async (req, res) => {
     // (A) Extract Month/Year/PayDate from columns - check various possible column names
     if (firstRow["Month"]) extractedMonth = firstRow["Month"];
     if (firstRow["Year"]) extractedYear = firstRow["Year"];
-    
+
     // Check ALL possible payDate column names (case insensitive)
     if (firstRow["PayDate"]) extractedPayDate = firstRow["PayDate"];
     if (firstRow["payDate"]) extractedPayDate = firstRow["payDate"]; // lowercase 'p'
@@ -1181,7 +1182,7 @@ const addSalary = async (req, res) => {
 
       // Check for PayDate in individual row - check ALL possible column names
       let rowPayDate = null;
-      
+
       // Check all possible payDate column names
       if (row["PayDate"]) rowPayDate = row["PayDate"];
       if (row["payDate"]) rowPayDate = row["payDate"]; // lowercase 'p'
@@ -1209,7 +1210,7 @@ const addSalary = async (req, res) => {
 
       // Parse the date (handles DD/MM/YYYY format)
       let parsedDate = parseDate(rowPayDate);
-      
+
       if (!parsedDate || isNaN(parsedDate)) {
         console.log(`❌ Row ${index + 1}: Invalid PayDate format '${rowPayDate}' for staff ${staffId}`);
         hasInvalidPayDate = true;
@@ -1324,20 +1325,20 @@ const addSalary = async (req, res) => {
 // Helper function to parse date in DD/MM/YYYY format
 function parseDate(dateString) {
   if (!dateString) return null;
-  
+
   // Handle DD/MM/YYYY format (common in Excel)
   const parts = dateString.toString().split('/');
   if (parts.length === 3) {
     const day = parseInt(parts[0]);
     const month = parseInt(parts[1]) - 1; // Months are 0-indexed in JS
     const year = parseInt(parts[2]);
-    
+
     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
       const date = new Date(year, month, day);
       return !isNaN(date) ? date : null;
     }
   }
-  
+
   // Fallback to native Date parsing
   const date = new Date(dateString);
   return !isNaN(date) ? date : null;
@@ -1600,7 +1601,7 @@ const resetPassword = async (req, res) => {
 const approveHodLeave = async (req, res) => {
   try {
     const { leaveId, relievingStaff, comment } = req.body;
-console.log("COMMENT RECEIVED:", comment);
+    console.log("COMMENT RECEIVED:", comment);
     if (!leaveId || !relievingStaff) {
       return res.json({ success: false, message: 'Leave ID and Relieving Staff are required' });
     }
@@ -1891,6 +1892,19 @@ const getEmployeeDashboardData = async (req, res) => {
     // Fetch bonuses
     const bonuses = await BonusModel.find({ employee: profile._id });
 
+    // Fetch Loans
+    const loans = await Loan.find({ userId });
+
+    // Fetch KPIs/Evaluations
+    const kpis = await Kpi.find({ userId }).sort({ year: -1, month: -1 }).limit(5);
+
+    // Fetch unread messages count
+    const unreadNotifications = await Message.countDocuments({
+      recipients: userId,
+      "isRead.userId": userId,
+      "isRead.read": false
+    });
+
     // Calculate attendance percentage for current month
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1912,7 +1926,10 @@ const getEmployeeDashboardData = async (req, res) => {
         leaves,
         currentMonthSalary: latestSalary,
         attendance: { percentage: attendancePercentage },
-        bonuses
+        bonuses,
+        loans,
+        kpis,
+        unreadNotifications
       }
     });
   } catch (error) {
@@ -2325,7 +2342,7 @@ const getHodDashboard = async (req, res) => {
 
     // Step 5: Get department statistics
     const totalEmployees = departmentEmployees.length;
-    
+
     // Get employees on leave today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2362,10 +2379,10 @@ const getHodDashboard = async (req, res) => {
     let performance = null;
     if (hodKpis.length > 0) {
       const latestKpi = hodKpis[0];
-      
+
       // Get HOD's evaluation data
       const hodEval = await Evaluation.findOne({ kpiId: latestKpi._id });
-      
+
       performance = {
         rating: hodEval?.scores?.overall || 0,
         projectsCompleted: latestKpi.scores?.projectsCompleted || 0,
@@ -2399,7 +2416,7 @@ const getHodDashboard = async (req, res) => {
 
 
 
- 
+
 
 
 export {
