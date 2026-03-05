@@ -18,6 +18,7 @@ import AdminEvaluation from "../models/adminEvaluation.js";
 import Attendance from "../models/attendance.js";
 import Loan from "../models/loan.js";
 import Payroll from "../models/Payroll.js";
+import BonusModel from "../models/BonusModel.js";
 import axios from 'axios';
 import sgMail from '@sendgrid/mail'
 
@@ -1887,12 +1888,31 @@ const getEmployeeDashboardData = async (req, res) => {
       .sort({ year: -1, payDate: -1 })
       .limit(1);
 
+    // Fetch bonuses
+    const bonuses = await BonusModel.find({ employee: profile._id });
+
+    // Calculate attendance percentage for current month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const attendanceRecords = await Attendance.find({
+      employeeId: profile._id,
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+
+    const totalDays = attendanceRecords.length;
+    const presentDays = attendanceRecords.filter(record => record.status === 'Present').length;
+    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
     return res.status(200).json({
       success: true,
       data: {
         profile,
         leaves,
-        latestSalary: latestSalary || null,
+        currentMonthSalary: latestSalary,
+        attendance: { percentage: attendancePercentage },
+        bonuses
       }
     });
   } catch (error) {
