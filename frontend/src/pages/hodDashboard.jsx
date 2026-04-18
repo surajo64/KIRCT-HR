@@ -74,7 +74,7 @@ const HodDashboard = () => {
       {/* Welcome Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
-          Welcome Back: {dashboardData.profile?.name || 'Surajo Umar Danja'}
+          Welcome Back: {dashboardData.profile?.userId?.name || user?.name || 'HOD'}
         </h1>
         <p className="text-gray-600 mt-2">KIRCT HOD DASHBOARD - Here's your dashboard overview</p>
       </div>

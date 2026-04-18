@@ -850,9 +850,9 @@ const getLeaveToHod = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Step 1: Get the HOD's employee record including department
-    const hodEmployee = await Employee.findOne({ userId }).populate('department');
-    if (!hodEmployee || hodEmployee.designation !== 'HOD') {
+    // Step 1: Get the HOD's employee record including department and user role
+    const hodEmployee = await Employee.findOne({ userId }).populate('department').populate('userId');
+    if (!hodEmployee || hodEmployee.userId.role !== 'HOD') {
       return res.json({ message: 'Access denied. Only HODs can access this.' });
     }
 
@@ -2019,8 +2019,8 @@ const getKpiByDepartment = async (req, res) => {
     const userId = req.userId;
 
     // Step 1: Verify HOD and get department
-    const hod = await Employee.findOne({ userId }).populate('department');
-    if (!hod || hod.designation !== 'HOD') {
+    const hod = await Employee.findOne({ userId }).populate('department').populate('userId');
+    if (!hod || hod.userId.role !== 'HOD') {
       return res.status(403).json({ success: false, message: 'Access denied. Only HODs can access this.' });
     }
 
@@ -2320,7 +2320,7 @@ const getHodDashboard = async (req, res) => {
       return res.status(404).json({ success: false, message: 'HOD profile not found' });
     }
 
-    if (hodProfile.designation !== 'HOD') {
+    if (hodProfile.userId.role !== 'HOD') {
       return res.status(403).json({ success: false, message: 'Access denied. Only HODs can access this.' });
     }
 
