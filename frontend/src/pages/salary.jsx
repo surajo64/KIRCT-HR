@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { AppContext } from '../context/AppContext';
 import axios from 'axios';
 import LoadingOverlay from '../components/loadingOverlay.jsx';
+import * as XLSX from 'xlsx';
 
 const salary = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +22,53 @@ const salary = () => {
 
 
   const handleFileChange = (e) => setFile(e.target.files[0]);
+  
+  const downloadTemplate = () => {
+    const headers = [
+      "Staff ID", "Month", "Year", "PayDate", 
+      "Basic Salary (₦)", "Transport Allowance (₦)", "Meal Allowance (₦)",
+      "Overtime Hours", "Overtime Rate (₦)", "Overtime Amount (₦)",
+      "Employee Pension (₦)", "Employer Pension (₦)", "Total Pension (₦)",
+      "PAYE Tax (₦)", "Withholding Tax (₦)", "Loan Deductions (₦)",
+      "Non-Tax Pay (₦)", "Total Deductions (₦)", "Gross Salary (₦)",
+      "Net Salary (₦)", "Status"
+    ];
+
+    // Sample row data
+    const sampleData = [
+      {
+        "Staff ID": "EMP001",
+        "Month": "January",
+        "Year": 2024,
+        "PayDate": "2024/01/31",
+        "Basic Salary (₦)": 50000,
+        "Transport Allowance (₦)": 5000,
+        "Meal Allowance (₦)": 3000,
+        "Overtime Hours": 10,
+        "Overtime Rate (₦)": 500,
+        "Overtime Amount (₦)": 5000,
+        "Employee Pension (₦)": 4000,
+        "Employer Pension (₦)": 5000,
+        "Total Pension (₦)": 9000,
+        "PAYE Tax (₦)": 2000,
+        "Withholding Tax (₦)": 0,
+        "Loan Deductions (₦)": 0,
+        "Non-Tax Pay (₦)": 0,
+        "Total Deductions (₦)": 6000,
+        "Gross Salary (₦)": 63000,
+        "Net Salary (₦)": 57000,
+        "Status": "Pending"
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData, { header: headers });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Salary Template");
+    
+    // Download the file
+    XLSX.writeFile(workbook, "salary_upload_template.xlsx");
+    toast.info("Template downloaded successfully");
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -308,13 +356,26 @@ const monthNames = [
                 />
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex flex-col gap-2">
                 <button
-                  type="submit"
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold transition"
+                  type="button"
+                  onClick={downloadTemplate}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center justify-center gap-2"
                 >
-                  Upload
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Salary Template
                 </button>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold transition w-full"
+                  >
+                    Upload
+                  </button>
+                </div>
               </div>
             </form>
           </div>
