@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { AppContext } from "../../context/AppContext";
 import LoadingOverlay from "../../components/loadingOverlay.jsx";
+import StaffSelect from "../../components/StaffSelect.jsx";
 
 const OtherBonus = () => {
   const { token, backendUrl } = useContext(AppContext);
@@ -108,6 +109,32 @@ const OtherBonus = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ✅ Handle manual bonus change
+  const handleManualBonusChange = (targetStaffId, value) => {
+    setCalculations((prev) => {
+      const updated = prev.map((calc) => {
+        if (calc.staffId === targetStaffId) {
+          return {
+            ...calc,
+            bonusCalculation: {
+              ...calc.bonusCalculation,
+              totalBonus: Number(value),
+            },
+          };
+        }
+        return calc;
+      });
+
+      const total = updated.reduce(
+        (acc, calc) => acc + (calc.bonusCalculation?.totalBonus || 0),
+        0
+      );
+      setTotalBonusAmount(total);
+
+      return updated;
+    });
   };
 
   // ✅ Search existing bonuses
@@ -243,21 +270,15 @@ const OtherBonus = () => {
 
       {/* Inputs */}
       <div className="flex flex-col sm:flex-row sm:justify-center sm:items-center gap-4 mt-5">
-        <select
-          value={staffId}
-          onChange={(e) => setStaffId(e.target.value)}
-          className="px-4 py-2 border rounded-md w-full sm:w-52 focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">Select Staff</option>
-          {employees
-            .filter((emp) => emp.status === true)
-            .sort((a, b) => a.name.localeCompare(b.name)) // ✅ Sort alphabetically by name (A-Z)
-            .map((emp) => (
-              <option key={emp._id} value={emp.staffId}>
-                {emp.name} ({emp.staffId})
-              </option>
-            ))}
-        </select>
+        <div className="w-full sm:w-64">
+          <StaffSelect 
+            employees={employees?.filter((emp) => emp.status === true)}
+            selectedId={staffId}
+            onSelect={(val) => setStaffId(val)}
+            valueField="staffId"
+            placeholder="Select Staff"
+          />
+        </div>
 
 
         <select
@@ -360,7 +381,20 @@ const OtherBonus = () => {
                     ₦{calc.basicSalary?.toLocaleString()}
                   </td>
                   <td className="p-3 border font-semibold">
-                    ₦{calc.bonusCalculation?.totalBonus?.toLocaleString()}
+                    {calc.status === "pending" && (calc.basicSalary === 0 || !calc.basicSalary) ? (
+                      <div className="flex items-center justify-center">
+                        <span className="mr-1">₦</span>
+                        <input
+                          type="number"
+                          value={calc.bonusCalculation?.totalBonus || ""}
+                          onChange={(e) => handleManualBonusChange(calc.staffId, e.target.value)}
+                          className="w-32 px-2 py-1 border rounded focus:ring-2 focus:ring-green-500 text-center"
+                          placeholder="Enter Bonus"
+                        />
+                      </div>
+                    ) : (
+                      `₦${calc.bonusCalculation?.totalBonus?.toLocaleString()}`
+                    )}
                   </td>
                   <td
                     className={`p-3 border font-medium ${getStatusColor(

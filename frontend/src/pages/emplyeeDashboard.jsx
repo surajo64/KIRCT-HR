@@ -28,7 +28,8 @@ const EmployeeDashboard = () => {
     bonuses: [],
     loans: [],
     kpis: [],
-    unreadNotifications: 0
+    unreadNotifications: 0,
+    relievingLeaves: []
   });
 
   const [loading, setLoading] = useState(true);
@@ -79,6 +80,46 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="w-full bg-gray-100 min-h-screen p-4 md:p-6">
+
+      {/* Relieving Officer Notifications */}
+      {dashboardData.relievingLeaves && dashboardData.relievingLeaves.length > 0 && (
+        <div className="mb-8 space-y-4">
+          {dashboardData.relievingLeaves.map((relieving, index) => (
+            <div 
+              key={index} 
+              className={`p-4 rounded-xl shadow border-l-4 flex items-center justify-between ${
+                relieving.resumeStatus 
+                  ? "bg-green-50 border-green-500" 
+                  : "bg-blue-50 border-blue-500"
+              }`}
+            >
+              <div className="flex items-center space-x-4">
+                <div className={`p-2 rounded-full ${
+                  relieving.resumeStatus ? "bg-green-100" : "bg-blue-100"
+                }`}>
+                  <Briefcase className={relieving.resumeStatus ? "text-green-600" : "text-blue-600"} size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-800"> Relieving Duty</h4>
+                  <p className="text-gray-600">
+                    {relieving.resumeStatus 
+                      ? `You have covered ${relieving.userId?.name || 'Staff'} for the period ${new Date(relieving.from).toLocaleDateString()} to ${new Date(relieving.to).toLocaleDateString()}.`
+                      : `You are to cover for ${relieving.userId?.name || 'Staff'} for the period ${new Date(relieving.from).toLocaleDateString()} to ${new Date(relieving.to).toLocaleDateString()}.`
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="hidden sm:block">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  relieving.resumeStatus ? "bg-green-200 text-green-800" : "bg-blue-200 text-blue-800"
+                }`}>
+                  {relieving.resumeStatus ? "Completed" : "Active Coverage"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Welcome Section */}
       <div className="mb-8">

@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import axios from 'axios';
 import { AppContext } from '../context/AppContext';
 import LoadingOverlay from '../components/loadingOverlay.jsx';
+import StaffSelect from '../components/StaffSelect.jsx';
 
 
 const hodLeave = () => {
@@ -714,24 +715,12 @@ const hodLeave = () => {
         {selectedLeave.hodStatus === "Pending" && (
               <div className="mt-6">
                 <label className="block font-semibold mb-1">Select Relieving Staff</label>
-                <select
-                  className={`w-full border rounded px-4 py-2 ${selectedLeave?.status === 'Approved' || selectedLeave?.status === 'Rejected'
-                    ? 'bg-gray-100 cursor-not-allowed text-gray-500'
-                    : 'border-gray-300'
-                    }`}
-                  value={relievingStaff}
-                  onChange={(e) => setRelievingStaff(e.target.value)}>
-                  <option value="">-- Select Relieving Staff --</option>
-                  {employee
-                    ?.filter(emp => emp.userId?._id !== selectedLeave?.userId?._id)
-                    .map(emp => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.userId?.name}
-                      </option>
-                    ))}
-
-
-                </select>
+                <StaffSelect 
+                  employees={employee?.filter(emp => emp?.userId?._id !== selectedLeave?.userId?._id)}
+                  selectedId={relievingStaff}
+                  onSelect={(val) => setRelievingStaff(val)}
+                  placeholder="-- Select Relieving Staff --"
+                />
 
                  {/* Comment Textarea */}
         <textarea

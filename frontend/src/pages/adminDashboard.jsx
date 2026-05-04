@@ -39,7 +39,8 @@ const AdminDashboard = () => {
     voluntary: 0,
     postDoctoral: 0,
     sabbatical: 0,
-    sabbaticalLeave: 0
+    sabbaticalLeave: 0,
+    nysc: 0
   });
 
   // Defensive fallback if leaves is undefined
@@ -99,6 +100,7 @@ const AdminDashboard = () => {
             postDoctoral: all.filter(emp => emp.type === 'post-doctoral-fellow').length,
             sabbatical: all.filter(emp => emp.type === 'sabbatical').length,
             sabbaticalLeave: all.filter(emp => emp.type === 'sabbatical leave').length,
+            nysc: all.filter(emp => emp.type === 'nysc').length,
           };
           setEmployeeStatusCounts(counts);
         }
@@ -279,6 +281,15 @@ const AdminDashboard = () => {
             bg="bg-rose-50"
             textColor="text-rose-700"
             borderColor="border-rose-200"
+          />
+          
+          <StatusCard
+            title="NYSC"
+            value={employeeStatusCounts.nysc}
+            icon={<Users className="text-orange-600 w-6 h-6" />}
+            bg="bg-orange-50"
+            textColor="text-orange-700"
+            borderColor="border-orange-200"
           />
         </div>
       </div>

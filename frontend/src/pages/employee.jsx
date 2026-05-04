@@ -23,9 +23,10 @@ const employee = () => {
   const [employeeDetails, setEmployeeDetails] = useState([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deactivationReason, setDeactivationReason] = useState('');
+  const [deactivationDate, setDeactivationDate] = useState('');
   const [designationOptions, setDesignationOptions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5
+  const itemsPerPage = 15;
   const [showForm, setShowForm] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -306,12 +307,17 @@ const employee = () => {
         toast.error('Reason for deactivation is required');
         return;
       }
+      if (!deactivationDate || deactivationDate.trim() === '') {
+        toast.error('Termination date is required');
+        return;
+      }
     }
 
     try {
       const { data } = await axios.post(`${backendUrl}/api/admin/deactivate-employee`, {
         employeeId: idToUse,
         reason: emp?.status ? deactivationReason : undefined,
+        deactivationDate: emp?.status ? deactivationDate : undefined,
       }, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -322,6 +328,7 @@ const employee = () => {
         toast.success(data.message);
         setConfirmDeleteId(null);
         setDeactivationReason('');
+        setDeactivationDate('');
         getAllEmployees();
       } else {
         toast.error(data.message || "Failed to update employee status");
@@ -373,7 +380,7 @@ const employee = () => {
       if (type !== 'all') queryParams.append('type', type);
       if (department !== 'all') queryParams.append('department', department);
       if (qualification !== 'all') queryParams.append('qualification', qualification);
-      
+
       const { data } = await axios.get(`${backendUrl}/api/admin/employees?${queryParams.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -442,7 +449,8 @@ const employee = () => {
       siwes: 'SIWES',
       voluntary: 'Voluntary',
       'post-doctoral-fellow': 'Post Doctoral Fellow',
-      sabbatical: 'Sabbatical'
+      sabbatical: 'Sabbatical',
+      nysc: 'NYSC'
     };
     if (map[t]) return map[t];
     // fallback: replace -/_ with spaces and capitalize words
@@ -798,6 +806,7 @@ const employee = () => {
                       <option value="secondment">Secondment</option>
                       <option value="internship">Internship</option>
                       <option value="siwes">SIWES</option>
+                      <option value="nysc">NYSC</option>
                       <option value="voluntary">Voluntary</option>
                       <option value="post-doctoral-fellow">Post-Doctoral Fellow</option>
                       <option value="sabbatical">Sabbatical</option>
@@ -1017,18 +1026,28 @@ const employee = () => {
                 { label: "Bank Name", value: selectedEmployee.bankAccount?.bankName || 'Not provided' },
                 { label: "Account Number", value: selectedEmployee.bankAccount?.accountNumber || 'Not provided' },
                 { label: "Account Name", value: selectedEmployee.bankAccount?.accountName || 'Not provided' },
-                    {
-                      label: "Employee Status",
-                      value: (
-                        selectedEmployee.status ? (
-                          <span className="text-green-600 font-semibold">Active</span>
-                        ) : (
-                          <Tooltip text={selectedEmployee.deactivationReason || 'No reason provided'}>
-                            <span className="text-red-600 font-semibold" style={{ cursor: 'help' }}>Inactive</span>
-                          </Tooltip>
-                        )
-                      ),
-                    },
+                {
+                  label: "Employee Status",
+                  value: (
+                    selectedEmployee.status ? (
+                      <span className="text-green-600 font-semibold">Active</span>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-red-600 font-semibold">Inactive</span>
+                        {selectedEmployee.deactivationReason && (
+                          <div className="text-xs text-gray-600">
+                            <span className="font-semibold">Reason:</span> {selectedEmployee.deactivationReason}
+                          </div>
+                        )}
+                        {selectedEmployee.deactivationDate && (
+                          <div className="text-xs text-gray-600">
+                            <span className="font-semibold">Terminated:</span> {new Date(selectedEmployee.deactivationDate).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ),
+                },
                 {
                   label: "CV",
                   value: selectedEmployee.cv ? (
@@ -1066,21 +1085,32 @@ const employee = () => {
                 : "Are you sure you want to activate this employee?"}
             </p>
             {employees.find(emp => emp._id === confirmDeleteId)?.status && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Reason for Deactivation</label>
-                <textarea
-                  value={deactivationReason}
-                  onChange={(e) => setDeactivationReason(e.target.value)}
-                  placeholder="Provide reason for deactivating this employee"
-                  className="w-full p-2 border border-gray-300 rounded"
-                  rows={3}
-                />
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Reason for Deactivation</label>
+                  <textarea
+                    value={deactivationReason}
+                    onChange={(e) => setDeactivationReason(e.target.value)}
+                    placeholder="Provide reason for deactivating this employee"
+                    className="w-full p-2 border border-gray-300 rounded"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Termination Date</label>
+                  <input
+                    type="date"
+                    value={deactivationDate}
+                    onChange={(e) => setDeactivationDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  />
+                </div>
               </div>
             )}
 
             <div className="flex justify-between">
               <button
-                onClick={() => { setConfirmDeleteId(null); setDeactivationReason(''); }}
+                onClick={() => { setConfirmDeleteId(null); setDeactivationReason(''); setDeactivationDate(''); }}
                 className="bg-gray-300 px-8 py-2 rounded-full hover:bg-gray-400"
               >
                 Cancel
@@ -1142,6 +1172,7 @@ const employee = () => {
                     <option value="secondment">Secondment</option>
                     <option value="internship">Internship</option>
                     <option value="siwes">SIWES</option>
+                    <option value="nysc">NYSC</option>
                     <option value="voluntary">Voluntary</option>
                     <option value="post-doctoral-fellow">Post-Doctoral Fellow</option>
                     <option value="sabbatical">Sabbatical</option>

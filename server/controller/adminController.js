@@ -276,7 +276,7 @@ const updateEmployee = async (req, res) => {
 // Update employee status to false (deactivate employee)
 const deactivateEmployee = async (req, res) => {
   try {
-    const { employeeId, reason } = req.body;
+    const { employeeId, reason, deactivationDate } = req.body;
 
     if (!employeeId) {
       return res.status(400).json({ success: false, message: "Employee ID is required" });
@@ -302,7 +302,7 @@ const deactivateEmployee = async (req, res) => {
       status: newStatus,
       // when deactivating, set reason and date; when activating, clear them
       deactivationReason: newStatus ? null : reason,
-      deactivationDate: newStatus ? null : new Date(),
+      deactivationDate: newStatus ? null : (deactivationDate || new Date()),
     };
 
     const updatedEmployee = await Employee.findByIdAndUpdate(
@@ -1919,6 +1919,12 @@ const getEmployeeDashboardData = async (req, res) => {
     const presentDays = attendanceRecords.filter(record => record.status === 'Present').length;
     const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
+    // Fetch leaves where this employee is a relieving officer
+    const relievingLeaves = await Leave.find({ 
+      relievingEId: profile._id,
+      hodStatus: 'Approved' 
+    }).populate('userId', 'name');
+
     return res.status(200).json({
       success: true,
       data: {
@@ -1929,7 +1935,8 @@ const getEmployeeDashboardData = async (req, res) => {
         bonuses,
         loans,
         kpis,
-        unreadNotifications
+        unreadNotifications,
+        relievingLeaves
       }
     });
   } catch (error) {

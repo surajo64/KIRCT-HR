@@ -315,9 +315,23 @@ const employeeProfile = () => {
             {
               label: "Status",
               value: (
-                <span className={employee.status ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                  {employee.status ? "Active" : "Inactive"}
-                </span>
+                employee.status ? (
+                  <span className="text-green-600 font-semibold">Active</span>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-red-600 font-semibold">Inactive</span>
+                    {employee.deactivationReason && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-semibold">Reason:</span> {employee.deactivationReason}
+                      </div>
+                    )}
+                    {employee.deactivationDate && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-semibold">Terminated:</span> {new Date(employee.deactivationDate).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                )
               ),
             },
           ].map((item, index) => (
@@ -466,6 +480,7 @@ const employeeProfile = () => {
               <option value="permanent">Permanent</option>
               <option value="locum">Locum/Contract</option>
               <option value="consultant">Consultant</option>
+              <option value="nysc">NYSC</option>
             </select>
           </div>
 

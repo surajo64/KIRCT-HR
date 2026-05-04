@@ -412,6 +412,7 @@ const monthNames = [
                 <option value="permanent">Permanent</option>
                 <option value="locum">Locum/Contract</option>
                 <option value="consultant">Consultant</option>
+                <option value="nysc">NYSC</option>
               </select>
               <button
                 onClick={() => {
