@@ -17,7 +17,7 @@ import { addDepartment, addEmployee, addLeave, addSalary, adminEvaluation, apply
     rejectHodLeave, 
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
-    uploadAttendance, getHodDashboard,} from '../controller/adminController.js';
+    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers,} from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
 
 
@@ -104,5 +104,9 @@ adminRouter.get('/get-employee-loan', authUser, getEmployeeLoan);
 adminRouter.post('/approve-loan', authUser, approveRejectLoan);
 adminRouter.post('/update-loan', authUser, updateLoan);
 
+// Login Tracking Routes
+adminRouter.get('/login-logs', authUser, getLoginLogs);
+adminRouter.get('/login-frequency', authUser, getLoginFrequency);
+adminRouter.get('/active-users', authUser, getActiveUsers);
 
 export default adminRouter;

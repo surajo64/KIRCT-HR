@@ -2,6 +2,7 @@ import User from "../models/User.js"
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import Message from "../models/message.js"
+import LoginLog from "../models/LoginLog.js"
 import { io } from "../index.js";
 import mongoose from "mongoose";
 
@@ -17,6 +18,23 @@ export const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password)
     if (isMatch) {
       const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET,)
+
+      // Log the login activity
+      try {
+        const loginLog = new LoginLog({
+          userId: user._id,
+          userName: user.name,
+          email: user.email,
+          role: user.role,
+          loginTime: new Date(),
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('user-agent') || 'Unknown'
+        })
+        const savedLog = await loginLog.save()
+        console.log('Login recorded for', user.email, 'logId:', savedLog._id)
+      } catch (logError) {
+        console.error("Error logging login activity:", logError)
+      }
 
       res.json({
         success: true,

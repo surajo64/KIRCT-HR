@@ -91,6 +91,7 @@ const Sidebar = () => {
                   <SidebarLink to="/department" label="Departments" icon={assets.Department} />
                   <SidebarLink to="/leave" label="Leave Management" icon={assets.Leave} />
                   <SidebarLink to="/attendence" label="Attendance" icon={assets.Attend} />
+                  <SidebarLink to="/login-tracking" label="Login Tracking" icon={assets.Department} />
                 </SidebarSection>
 
                 <SidebarSection title="Finance">

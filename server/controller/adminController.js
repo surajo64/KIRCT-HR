@@ -8,6 +8,7 @@ import path from "path";
 import Employee from "../models/Employee.js";
 import Leave from "../models/Leave.js";
 import Salary from "../models/Salary.js";
+import LoginLog from "../models/LoginLog.js";
 import xlsx from 'xlsx';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
@@ -394,8 +395,8 @@ const getAllUsers = async (req, res) => {
 
     // Fetch all users except the logged-in user
     const users = await User.find({ _id: { $ne: userId } })
-      .select("name email role profileImage") // fields you need
-      .populate("department", "name");        // optional: include department
+      .select('name email role profileImage') // fields you need
+      .populate('department', 'name');        // optional: include department
 
     res.json({ success: true, users });
   } catch (error) {
@@ -2421,6 +2422,125 @@ const getHodDashboard = async (req, res) => {
   }
 };
 
+// Get login logs with filtering
+ const getLoginLogs = async (req, res) => {
+  try {
+    const { userId, startDate, endDate, page = 1, limit = 20 } = req.query;
+    
+    let filter = {};
+    
+    // Filter by userId if provided
+    if (userId) {
+      filter.userId = userId;
+    }
+    
+    // Filter by date range if provided
+    if (startDate || endDate) {
+      filter.loginTime = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        filter.loginTime.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.loginTime.$lte = end;
+      }
+    }
+    
+    const skip = (page - 1) * limit;
+    
+    const loginLogs = await LoginLog.find(filter)
+      .populate('userId', 'name email role department')
+      .sort({ loginTime: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await LoginLog.countDocuments(filter);
+    
+    res.json({
+      success: true,
+      data: loginLogs,
+      total,
+      pages: Math.ceil(total / limit),
+      currentPage: parseInt(page)
+    });
+    
+  } catch (error) {
+    console.error("Error fetching login logs:", error);
+    res.status(500).json({ success: false, message: "Error fetching login logs", error: error.message });
+  }
+};
+
+// Get login frequency statistics
+const getLoginFrequency = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    let filter = {};
+    
+    if (startDate || endDate) {
+      filter.loginTime = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        filter.loginTime.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.loginTime.$lte = end;
+      }
+    }
+    
+    // Get login frequency by user
+    const frequency = await LoginLog.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$userId",
+          userName: { $first: "$userName" },
+          email: { $first: "$email" },
+          role: { $first: "$role" },
+          loginCount: { $sum: 1 },
+          lastLogin: { $max: "$loginTime" },
+          firstLogin: { $min: "$loginTime" }
+        }
+      },
+      { $sort: { loginCount: -1 } }
+    ]);
+    
+    res.json({
+      success: true,
+      data: frequency
+    });
+    
+  } catch (error) {
+    console.error("Error fetching login frequency:", error);
+    res.status(500).json({ success: false, message: "Error fetching login frequency", error: error.message });
+  }
+};
+
+// Get unique users list for filtering
+ const getActiveUsers = async (req, res) => {
+  try {
+    const users = await LoginLog.aggregate([
+      { $group: { _id: "$userId", name: { $first: "$userName" }, email: { $first: "$email" } } },
+      { $sort: { name: 1 } }
+    ]);
+    
+    res.json({
+      success: true,
+      data: users
+    });
+    
+  } catch (error) {
+    console.error("Error fetching active users:", error);
+    res.status(500).json({ success: false, message: "Error fetching active users" });
+  }
+};
+
 
 
 
@@ -2435,5 +2555,6 @@ export {
   submitKpi, getKpi, hodEvaluation, getKpiByDepartment, adminEvaluation, updateAdminEvaluation,
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
   applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
+  getLoginLogs, getLoginFrequency,getActiveUsers
 
 }

@@ -39,6 +39,7 @@ import Payroll from './pages/account/Payroll.jsx'
 import AnnualBonus from './pages/account/YearEndPayroll.jsx'
 import OtherBonus from './pages/account/otherBonus.jsx'
 import EmployeeBonus from './pages/Bonus.jsx'
+import LoginTracking from './pages/loginTracking.jsx'
 
 const App = () => {
   const { token, setToken, setUser, user } = useContext(AppContext);
@@ -147,6 +148,7 @@ const App = () => {
               <Route path='/evaluation' element={<Evaluation />} />
               <Route path='/admin-evaluation' element={<AdminEvaluation />} />
               <Route path='/attendence' element={<Attendance />} />
+              <Route path='/login-tracking' element={<LoginTracking />} />
              <Route path="/account/:id" element={<AccountDetailPage />} />
              <Route path="/all-transactions" element={<AllTransaction />} />
              <Route path="/all-account" element={<AllAccount />} />
