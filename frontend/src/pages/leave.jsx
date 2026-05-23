@@ -31,13 +31,14 @@ const leave = () => {
       if (editingLeave && editingLeave._id) {
         const { data } = await axios.post(
           backendUrl + '/api/admin/update-leave',
-          { leaveid: editingLeave._id, ...formData },
+          { leaveId: editingLeave._id, ...formData },
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (data.success) {
           toast.success("Leave updated successfully!");
           setSelectedLeave(null);
+          setShowForm(false);
           getAllLeaves();
         }
       } else {
@@ -55,6 +56,7 @@ const leave = () => {
           setTo("")
           getAllLeaves();
           setSelectedLeave(null);
+          setShowForm(false);
         } else {
           toast.error(data.message);
         }
