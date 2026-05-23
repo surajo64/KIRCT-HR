@@ -905,11 +905,34 @@ const updateLeave = async (req, res) => {
   }
 
   try {
-    // Update department
+    // Calculate working days
+    const calculateWorkingDays = (startDate, endDate) => {
+      let count = 0;
+      const current = new Date(startDate);
+      const end = new Date(endDate);
+
+      current.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+
+      while (current <= end) {
+        const day = current.getDay();
+        if (day !== 0 && day !== 6) count++;
+        current.setDate(current.getDate() + 1);
+      }
+      return count;
+    };
+
+    const totalWorkingDays = calculateWorkingDays(from, to);
+
+    // Update leave
     const updatedLeave = await Leave.findByIdAndUpdate(
       leaveId,
       {
-        leave, reason, from, to,
+        leave,
+        reason,
+        from,
+        to,
+        totalDays: totalWorkingDays,
         updatedAt: Date.now(),
       },
       { new: true }
@@ -925,7 +948,7 @@ const updateLeave = async (req, res) => {
     res.json({
       success: true,
       message: "Leave updated successfully",
-      Leave: updatedLeave,
+      leave: updatedLeave,
     });
 
   } catch (error) {
@@ -1921,9 +1944,9 @@ const getEmployeeDashboardData = async (req, res) => {
     const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
     // Fetch leaves where this employee is a relieving officer
-    const relievingLeaves = await Leave.find({ 
+    const relievingLeaves = await Leave.find({
       relievingEId: profile._id,
-      hodStatus: 'Approved' 
+      hodStatus: 'Approved'
     }).populate('userId', 'name');
 
     return res.status(200).json({
@@ -2423,17 +2446,17 @@ const getHodDashboard = async (req, res) => {
 };
 
 // Get login logs with filtering
- const getLoginLogs = async (req, res) => {
+const getLoginLogs = async (req, res) => {
   try {
     const { userId, startDate, endDate, page = 1, limit = 20 } = req.query;
-    
+
     let filter = {};
-    
+
     // Filter by userId if provided
     if (userId) {
       filter.userId = userId;
     }
-    
+
     // Filter by date range if provided
     if (startDate || endDate) {
       filter.loginTime = {};
@@ -2448,17 +2471,17 @@ const getHodDashboard = async (req, res) => {
         filter.loginTime.$lte = end;
       }
     }
-    
+
     const skip = (page - 1) * limit;
-    
+
     const loginLogs = await LoginLog.find(filter)
       .populate('userId', 'name email role department')
       .sort({ loginTime: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-    
+
     const total = await LoginLog.countDocuments(filter);
-    
+
     res.json({
       success: true,
       data: loginLogs,
@@ -2466,7 +2489,7 @@ const getHodDashboard = async (req, res) => {
       pages: Math.ceil(total / limit),
       currentPage: parseInt(page)
     });
-    
+
   } catch (error) {
     console.error("Error fetching login logs:", error);
     res.status(500).json({ success: false, message: "Error fetching login logs", error: error.message });
@@ -2477,9 +2500,9 @@ const getHodDashboard = async (req, res) => {
 const getLoginFrequency = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let filter = {};
-    
+
     if (startDate || endDate) {
       filter.loginTime = {};
       if (startDate) {
@@ -2493,7 +2516,7 @@ const getLoginFrequency = async (req, res) => {
         filter.loginTime.$lte = end;
       }
     }
-    
+
     // Get login frequency by user
     const frequency = await LoginLog.aggregate([
       { $match: filter },
@@ -2510,12 +2533,12 @@ const getLoginFrequency = async (req, res) => {
       },
       { $sort: { loginCount: -1 } }
     ]);
-    
+
     res.json({
       success: true,
       data: frequency
     });
-    
+
   } catch (error) {
     console.error("Error fetching login frequency:", error);
     res.status(500).json({ success: false, message: "Error fetching login frequency", error: error.message });
@@ -2523,18 +2546,18 @@ const getLoginFrequency = async (req, res) => {
 };
 
 // Get unique users list for filtering
- const getActiveUsers = async (req, res) => {
+const getActiveUsers = async (req, res) => {
   try {
     const users = await LoginLog.aggregate([
       { $group: { _id: "$userId", name: { $first: "$userName" }, email: { $first: "$email" } } },
       { $sort: { name: 1 } }
     ]);
-    
+
     res.json({
       success: true,
       data: users
     });
-    
+
   } catch (error) {
     console.error("Error fetching active users:", error);
     res.status(500).json({ success: false, message: "Error fetching active users" });
@@ -2555,6 +2578,6 @@ export {
   submitKpi, getKpi, hodEvaluation, getKpiByDepartment, adminEvaluation, updateAdminEvaluation,
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
   applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
-  getLoginLogs, getLoginFrequency,getActiveUsers
+  getLoginLogs, getLoginFrequency, getActiveUsers
 
 }

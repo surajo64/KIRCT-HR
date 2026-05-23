@@ -118,9 +118,9 @@ const leave = () => {
 
   const handleApproved = async (leaveId) => {
     if (!comment || comment.trim() === "") {
-  toast.error("Please enter a comment before approving or rejecting.");
-  return;
-}
+      toast.error("Please enter a comment before approving or rejecting.");
+      return;
+    }
     setIsLoading(true);
     try {
       const { data } = await axios.post(backendUrl + '/api/admin/approve-leave', { leaveId: selectedLeave._id, comment }, { headers: { Authorization: `Bearer ${token}` } })
@@ -141,9 +141,9 @@ const leave = () => {
 
   const handleReject = async (leaveId) => {
     if (!comment || comment.trim() === "") {
-  toast.error("Please enter a comment before approving or rejecting.");
-  return;
-}
+      toast.error("Please enter a comment before approving or rejecting.");
+      return;
+    }
     setIsLoading(true);
     try {
       const { data } = await axios.post(backendUrl + '/api/admin/reject-leave', { leaveId: selectedLeave._id, comment }, { headers: { Authorization: `Bearer ${token}` } })
@@ -204,27 +204,27 @@ const leave = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  
-const calculateDays = (from, to) => {
-  if (!from || !to) return "N/A";
 
-  const start = new Date(from);
-  const end = new Date(to);
+  const calculateDays = (from, to) => {
+    if (!from || !to) return "N/A";
 
-  if (end < start) return "Invalid Dates";
+    const start = new Date(from);
+    const end = new Date(to);
 
-  let count = 0;
-  let current = new Date(start);
+    if (end < start) return "Invalid Dates";
 
-  while (current <= end) {
-    const day = current.getDay();
-    // 0 = Sunday, 6 = Saturday → skip weekends
-    if (day !== 0 && day !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
+    let count = 0;
+    let current = new Date(start);
 
-  return count;
-};
+    while (current <= end) {
+      const day = current.getDay();
+      // 0 = Sunday, 6 = Saturday → skip weekends
+      if (day !== 0 && day !== 6) count++;
+      current.setDate(current.getDate() + 1);
+    }
+
+    return count;
+  };
 
 
   return (
@@ -370,7 +370,7 @@ const calculateDays = (from, to) => {
                     View
                   </button>
 
-                  {item.status === "Pending" && (
+                  {(
                     <button
                       onClick={() => handleUpdate(item)}
                       className="bg-green-500 text-white text-sm px-3 py-1 rounded-full"
@@ -491,7 +491,6 @@ const calculateDays = (from, to) => {
                       value={from}
                       onChange={(e) => setFrom(e.target.value)}
                       required
-                      min={new Date().toISOString().split("T")[0]}
                       className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
@@ -503,7 +502,6 @@ const calculateDays = (from, to) => {
                       value={to}
                       onChange={(e) => setTo(e.target.value)}
                       required
-                      min={from || new Date().toISOString().split("T")[0]}
                       className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
@@ -590,7 +588,7 @@ const calculateDays = (from, to) => {
                         </span>
                       )
                     },
-                     { label: "HOD Comments", value: selectedLeave.hodComments || "N/A" },
+                    { label: "HOD Comments", value: selectedLeave.hodComments || "N/A" },
                     {
                       label: "HR Approval",
                       value: (
