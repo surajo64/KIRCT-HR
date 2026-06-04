@@ -82,7 +82,8 @@ const Sidebar = () => {
           <nav>
             {token && user?.role === "admin" && (
               <>
-                <SidebarSection title="Main">
+                {/* ADMIN SECTION */}
+                <SidebarSection title="ADMIN">
                   <SidebarLink to="/admin-dashboard" label="Dashboard" icon={assets.Home} />
                 </SidebarSection>
 
@@ -145,6 +146,17 @@ const Sidebar = () => {
 
                 <SidebarSection title="Settings">
                   <SidebarLink to="/setting" label="Settings" icon={assets.Setting} />
+                </SidebarSection>
+
+                {/* EMPLOYEE SECTION */}
+                <SidebarSection title="EMPLOYEE">
+                  <SidebarLink to="/profile" label="My Profile" icon={assets.Emplyees} />
+                  <SidebarLink to="/employee-leave" label="Leave Requests" icon={assets.Leave} />
+                  <SidebarLink to="/employee-loan" label="Loan Applications" icon={assets.Salary} />
+                  <SidebarLink to="/employee-salary" label="Salary Overview" icon={assets.Salary} />
+                  <SidebarLink to="/employee-bonus" label="Bonus Overview" icon={assets.Salary} />
+                  <SidebarLink to="/employee-kpi" label="My KPI" icon={assets.Evaluation} />
+                  <SidebarLink to="/setting" label="Change Password" icon={assets.Setting} />
                 </SidebarSection>
               </>
             )}
