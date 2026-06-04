@@ -787,8 +787,8 @@ const getEmployeeLeaves = async (req, res) => {
       .populate("userId", "name email profileImage department")
       .populate("relievingEId", "staffId name designation");
 
-    // Used leave days (from approved)
-    const approved = leaves.filter((l) => l.status === "Approved");
+    // Used leave days (from approved ANNUAL LEAVES only)
+    const approved = leaves.filter((l) => l.status === "Approved" && l.leave === "Annual Leave");
 
     const usedLeaveDays = approved.reduce(
       (sum, l) => sum + (l.totalDays || 0), 0

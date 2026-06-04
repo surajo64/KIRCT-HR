@@ -84,7 +84,7 @@ const EmployeeLeave = () => {
         await fetchLeaves();
       } else {
         // fallback to local fetch
-        const res = await axios.get(`${backendUrl}/api/employee/leaves`, {
+        const res = await axios.get(`${backendUrl}/api/admin/employee-leave`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.data?.success) {
