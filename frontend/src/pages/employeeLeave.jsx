@@ -52,8 +52,8 @@ const EmployeeLeave = () => {
   // compute used days from existing approved leaves (weekdays only)
   const computeUsedDays = (leavesArr = []) => {
     return leavesArr.reduce((sum, l) => {
-      // only count approved leaves (and skip rejected)
-      if (l.status === "Approved" && l.hodStatus !== "Rejected") {
+      // only count approved ANNUAL LEAVES (and skip rejected)
+      if (l.status === "Approved" && l.hodStatus !== "Rejected" && l.leave === "Annual Leave") {
         // if leave record already stores totalDays use it; else compute:
         if (typeof l.totalDays === "number" && l.totalDays >= 0) return sum + l.totalDays;
         return sum + countWorkingDays(l.from, l.to);
