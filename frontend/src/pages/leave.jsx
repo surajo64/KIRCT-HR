@@ -8,6 +8,7 @@ import LoadingOverlay from '../components/loadingOverlay.jsx';
 const leave = () => {
   const { token, backendUrl, approveLeave, rejectLeave, leaves, employeeLeaves, getAllLeaves, setEmployeeLeaves, getEmployeeLeaves } = useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
+  const [leaveTypeFilter, setLeaveTypeFilter] = useState(''); // Add leave type filter
   const [showForm, setShowForm] = useState(false);
   const [leave, setLeave] = useState('');
   const [reason, setReason] = useState('');
@@ -185,18 +186,24 @@ const leave = () => {
 
       const term = searchTerm.toLowerCase();
 
-      return (
+      // Apply search term filter
+      const matchesSearch = (
         name.includes(term) ||
         leaveType.includes(term) ||
         appliedAt.includes(term) ||
         department.includes(term) ||
         staffId.includes(term)
       );
+
+      // Apply leave type filter
+      const matchesLeaveType = !leaveTypeFilter || leaveType === leaveTypeFilter.toLowerCase();
+
+      return matchesSearch && matchesLeaveType;
     });
 
     setFilteredLeaves(filtered);
     setCurrentPage(1); // Reset to first page on search
-  }, [searchTerm, leaves]);
+  }, [searchTerm, leaveTypeFilter, leaves]);
 
 
   // Pagination logic
@@ -233,7 +240,7 @@ const leave = () => {
     <div className='w-full max-w-6xl mx-auto px-4 text-center'>
       <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-5">EMPLOYEE LEAVE MANAGEMENT</p>
 
-      {/* Search */}
+      {/* Search and Filter */}
       <div className='flex flex-col sm:flex-row justify-between items-center mt-4 gap-4'>
         <input
           type='text'
@@ -242,6 +249,22 @@ const leave = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className='w-full sm:w-1/3 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
         />
+        
+        <select
+          value={leaveTypeFilter}
+          onChange={(e) => setLeaveTypeFilter(e.target.value)}
+          className='w-full sm:w-1/3 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white'
+        >
+          <option value=''>All Leave Types</option>
+          <option value='Annual Leave'>Annual Leave</option>
+          <option value='Sick Leave'>Sick Leave</option>
+          <option value='Study Leave'>Study Leave</option>
+          <option value='Paternity Leave'>Paternity Leave</option>
+          <option value='Maternity Leave'>Maternity Leave</option>
+          <option value='Compassionate Leave'>Compassionate Leave</option>
+          <option value='Leave of Absence'>Leave of Absence</option>
+          <option value='Sabbatical Leave'>Sabbatical Leave</option>
+        </select>
       </div>
 
       <div className='bg-white mt-6 rounded-lg shadow overflow-x-auto text-sm max-h-[80vh] min-h-[60vh]'>
