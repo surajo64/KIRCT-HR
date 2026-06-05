@@ -2564,6 +2564,127 @@ const getActiveUsers = async (req, res) => {
   }
 };
 
+// HOD - Update Leave Application with Status and Comments
+const hodUpdateLeave = async (req, res) => {
+  try {
+    const { leaveId, leave, reason, from, to, hodStatus, hodComments, relievingStaff } = req.body;
+
+    // Validate required fields
+    if (!leaveId) {
+      return res.status(400).json({ success: false, message: 'Leave ID is required' });
+    }
+
+    const leaveRecord = await Leave.findById(leaveId);
+    if (!leaveRecord) {
+      return res.status(404).json({ success: false, message: 'Leave not found' });
+    }
+
+    // Calculate working days if dates are provided
+    let totalWorkingDays = leaveRecord.totalDays;
+    if (from && to) {
+      const calculateWorkingDays = (startDate, endDate) => {
+        let count = 0;
+        const current = new Date(startDate);
+        const end = new Date(endDate);
+        current.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        while (current <= end) {
+          const day = current.getDay();
+          if (day !== 0 && day !== 6) count++;
+          current.setDate(current.getDate() + 1);
+        }
+        return count;
+      };
+      totalWorkingDays = calculateWorkingDays(from, to);
+    }
+
+    // Update leave record
+    const updateData = {
+      updatedAt: Date.now()
+    };
+
+    if (leave) updateData.leave = leave;
+    if (reason) updateData.reason = reason;
+    if (from) updateData.from = from;
+    if (to) updateData.to = to;
+    if (hodStatus) updateData.hodStatus = hodStatus;
+    if (hodComments) updateData.hodComments = hodComments;
+    if (relievingStaff) updateData.relievingEId = relievingStaff;
+    if (from && to) updateData.totalDays = totalWorkingDays;
+
+    const updatedLeave = await Leave.findByIdAndUpdate(leaveId, updateData, { new: true });
+
+    res.json({
+      success: true,
+      message: 'Leave updated successfully by HOD',
+      leave: updatedLeave
+    });
+  } catch (error) {
+    console.error('HOD Update Leave Error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+// Admin - Update Leave Application with Status and Comments
+const adminUpdateLeaveStatus = async (req, res) => {
+  try {
+    const { leaveId, leave, reason, from, to, status, hrComments } = req.body;
+
+    // Validate required fields
+    if (!leaveId) {
+      return res.status(400).json({ success: false, message: 'Leave ID is required' });
+    }
+
+    const leaveRecord = await Leave.findById(leaveId);
+    if (!leaveRecord) {
+      return res.status(404).json({ success: false, message: 'Leave not found' });
+    }
+
+    // Calculate working days if dates are provided
+    let totalWorkingDays = leaveRecord.totalDays;
+    if (from && to) {
+      const calculateWorkingDays = (startDate, endDate) => {
+        let count = 0;
+        const current = new Date(startDate);
+        const end = new Date(endDate);
+        current.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        while (current <= end) {
+          const day = current.getDay();
+          if (day !== 0 && day !== 6) count++;
+          current.setDate(current.getDate() + 1);
+        }
+        return count;
+      };
+      totalWorkingDays = calculateWorkingDays(from, to);
+    }
+
+    // Update leave record
+    const updateData = {
+      updatedAt: Date.now()
+    };
+
+    if (leave) updateData.leave = leave;
+    if (reason) updateData.reason = reason;
+    if (from) updateData.from = from;
+    if (to) updateData.to = to;
+    if (status) updateData.status = status;
+    if (hrComments) updateData.hrComments = hrComments;
+    if (from && to) updateData.totalDays = totalWorkingDays;
+
+    const updatedLeave = await Leave.findByIdAndUpdate(leaveId, updateData, { new: true });
+
+    res.json({
+      success: true,
+      message: 'Leave updated successfully by Admin',
+      leave: updatedLeave
+    });
+  } catch (error) {
+    console.error('Admin Update Leave Error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
 
 
 
@@ -2578,6 +2699,6 @@ export {
   submitKpi, getKpi, hodEvaluation, getKpiByDepartment, adminEvaluation, updateAdminEvaluation,
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
   applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
-  getLoginLogs, getLoginFrequency, getActiveUsers
+  getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus
 
 }

@@ -17,7 +17,7 @@ import { addDepartment, addEmployee, addLeave, addSalary, adminEvaluation, apply
     rejectHodLeave, 
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
-    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers,} from '../controller/adminController.js';
+    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus} from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
 
 
@@ -48,6 +48,7 @@ adminRouter.post("/deactivate-employee",authUser, deactivateEmployee);
 adminRouter.post('/add-leave',authUser, addLeave );
 adminRouter.get('/leave-list', getAllLeaves  );
 adminRouter.post('/update-leave',authUser, updateLeave );
+adminRouter.post('/admin-update-leave',authUser, adminUpdateLeaveStatus );
 adminRouter.delete('/delete-leave/:id',authUser, deleteLeave);
 adminRouter.post('/approve-leave',authUser, approveLeave );
 adminRouter.post('/reject-leave',authUser, rejectLeave );
@@ -59,6 +60,7 @@ adminRouter.post('/leave-resumed',authUser, resumeLeave );
 adminRouter.get('/hod-leave', authUser, getLeaveToHod);
 adminRouter.post('/hod-approve',authUser, approveHodLeave );
 adminRouter.post('/hod-reject',authUser, rejectHodLeave );
+adminRouter.post('/hod-update-leave',authUser, hodUpdateLeave );
 adminRouter.get('/hod-dashboard', authUser, getHodDashboard);
 
 

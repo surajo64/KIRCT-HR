@@ -26,6 +26,7 @@ const hodLeave = () => {
   const [editingLeave, setEditingLeave] = useState(null);
   const [filteredLeaves, setFilteredLeaves] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hodStatus, setHodStatus] = useState('Pending');
   const itemsPerPage = 5
 
 
@@ -33,12 +34,22 @@ const hodLeave = () => {
   const onSubmitHandler = async (event) => {
     event.preventDefault();
     setIsLoading(true);
-    const formData = { leave, reason, from, to };
     try {
       if (editingLeave && editingLeave._id) {
+        const formData = { 
+          leaveId: editingLeave._id,
+          leave, 
+          reason, 
+          from, 
+          to,
+          hodStatus,
+          hodComments: comment,
+          relievingStaff
+        };
+        
         const { data } = await axios.post(
-          backendUrl + '/api/admin/update-leave',
-          { leaveId: editingLeave._id, ...formData },
+          backendUrl + '/api/admin/hod-update-leave',
+          formData,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -46,9 +57,10 @@ const hodLeave = () => {
           toast.success("Leave updated successfully!");
           setLeave("");
           setReason("");
-          
           setFrom("");
-          setTo("")
+          setTo("");
+          setComment("");
+          setHodStatus("Pending");
           setSelectedLeave(null);
           fetchHodLeaves();
           setShowForm(false);
@@ -56,7 +68,7 @@ const hodLeave = () => {
       } else {
         const { data } = await axios.post(
           backendUrl + "/api/admin/add-leave",
-          formData,
+          { leave, reason, from, to },
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -108,6 +120,9 @@ const hodLeave = () => {
       setReason(item.reason);
       setFrom(new Date(item.from).toISOString().split('T')[0]);
       setTo(new Date(item.to).toISOString().split('T')[0]);
+      setHodStatus(item.hodStatus || 'Pending');
+      setComment(item.hodComments || '');
+      setRelievingStaff(item.relievingEId?._id || '');
       setShowForm(true);
       setIsLoading(false);
     }, 300);
@@ -455,7 +470,8 @@ const hodLeave = () => {
                 value={leave}
                 onChange={(e) => setLeave(e.target.value)}
                 required
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                disabled={!editingLeave}
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">-- Select Leave Type --</option>
                 <option value="Annual Leave">Annual Leave</option>
@@ -474,7 +490,8 @@ const hodLeave = () => {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 required
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                disabled={!editingLeave}
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Reason for leave"
                 rows={3}
               />
@@ -488,8 +505,9 @@ const hodLeave = () => {
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
                     required
-                    min={minFromDate}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    disabled={!editingLeave}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -500,16 +518,64 @@ const hodLeave = () => {
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
                     required
+                    disabled={!editingLeave}
                     min={from || new Date().toISOString().split("T")[0]}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
 
+              {/* Warning for backdating */}
+              {editingLeave && from && new Date(from) < new Date().setHours(0, 0, 0, 0) && (
+                <div className="p-2 bg-red-100 border-l-4 border-red-500 text-red-700 text-sm">
+                  ⚠️ Cannot backdate leave. Please select a date from today onwards.
+                </div>
+              )}
+
+              {/* HOD Status */}
+              {editingLeave && (
+                <>
+                  <div>
+                    <label className="block mb-1 text-sm font-semibold text-gray-700">Approval Status</label>
+                    <select
+                      value={hodStatus}
+                      onChange={(e) => setHodStatus(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+
+                  {/* HOD Comments */}
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    placeholder="HOD Comments/Remarks"
+                    rows={3}
+                  />
+
+                  {/* Relieving Staff for Approval */}
+                  {hodStatus === 'Approved' && (
+                    <div>
+                      <label className="block mb-1 text-sm font-semibold text-gray-700">Select Relieving Staff</label>
+                      <StaffSelect 
+                        employees={employee?.filter(emp => emp?.userId?._id !== editingLeave?.userId?._id)}
+                        selectedId={relievingStaff}
+                        onSelect={(val) => setRelievingStaff(val)}
+                        placeholder="-- Select Relieving Staff --"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-green-500 text-white py-2 rounded-md font-semibold hover:bg-green-600 transition text-sm"
+                className="w-full bg-green-500 text-white py-2 rounded-md font-semibold hover:bg-green-600 transition text-sm disabled:bg-gray-400"
               >
                 {editingLeave ? "Update Leave" : "Submit Leave Request"}
               </button>
