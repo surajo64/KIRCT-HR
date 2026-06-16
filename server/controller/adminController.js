@@ -238,6 +238,7 @@ const updateEmployee = async (req, res) => {
       duration,
       leaveDays: leaveDays !== undefined ? leaveDays : employee.leaveDays, // FIXED
       joinDate: joinDate ? new Date(joinDate) : employee.joinDate,
+      endDate: type !== 'permanent' && endDate ? new Date(endDate) : null,
       gender,
       staffId: normalizedStaffId,
       address,

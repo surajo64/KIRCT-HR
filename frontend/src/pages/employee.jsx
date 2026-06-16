@@ -792,6 +792,7 @@ const employee = () => {
                     <option value="NCE">Nigerian Certificate in Education</option>
                     <option value="HND">Higher National Diploma</option>
                     <option value="B.sc">Bachelor's Degree</option>
+                    <option value="PGD">Postgraduate Diploma</option>
                     <option value="M.Sc">Master's Degrees</option>
                     <option value="Ph.D">Doctorate Degrees</option>
                   </select>
@@ -1263,6 +1264,7 @@ const employee = () => {
                     <option value="NCE">Nigerian Certificate in Education</option>
                     <option value="HND">Higher National Diploma</option>
                     <option value="B.sc">Bachelor's Degree</option>
+                    <option value="PGD">Postgraduate Diploma</option>
                     <option value="M.Sc">Master's Degrees</option>
                     <option value="Ph.D">Doctorate Degrees</option>
                   </select>

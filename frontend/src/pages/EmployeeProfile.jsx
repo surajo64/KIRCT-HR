@@ -470,6 +470,7 @@ const employeeProfile = () => {
                     <option value="NCE">NCE</option>
                     <option value="HND">HND</option>
                     <option value="B.Sc">B.Sc</option>
+                    <option value="PGD">PGD</option>
                     <option value="M.Sc">M.Sc</option>
                     <option value="Ph.D">Ph.D</option>
                   </select>
