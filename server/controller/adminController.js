@@ -102,12 +102,12 @@ const addEmployee = async (req, res) => {
       experience: experience || "",
       qualification: qualification || "",
       maritalStatus: maritalStatus || "",
-      dob,
+      dob: dob && !isNaN(new Date(dob).getTime()) ? new Date(dob) : null,
       type,
-      joinDate,
-      endDate,
+      joinDate: joinDate && !isNaN(new Date(joinDate).getTime()) ? new Date(joinDate) : new Date(),
+      endDate: type !== 'permanent' && endDate && !isNaN(new Date(endDate).getTime()) ? new Date(endDate) : null,
       duration,
-      leaveDays,
+      leaveDays: leaveDays ? parseInt(leaveDays) : 0,
       gender,
       staffId: normalizedStaffId,
       address,
@@ -208,7 +208,7 @@ const updateEmployee = async (req, res) => {
       role,
       department,
       profileImage: profileImageUrl,
-      leaveDays: leaveDays !== undefined ? leaveDays : employee.userId.leaveDays, // FIXED
+      leaveDays: leaveDays !== undefined && leaveDays !== "" ? parseInt(leaveDays) : employee.userId.leaveDays,
     };
 
     if (password) {
@@ -233,13 +233,13 @@ const updateEmployee = async (req, res) => {
       designation,
       state,
       maritalStatus,
-      dob,
+      dob: dob && !isNaN(new Date(dob).getTime()) ? new Date(dob) : employee.dob,
       rent,
       type,
       duration,
-      leaveDays: leaveDays !== undefined ? leaveDays : employee.leaveDays, // FIXED
-      joinDate: joinDate ? new Date(joinDate) : employee.joinDate,
-      endDate: type !== 'permanent' && endDate ? new Date(endDate) : null,
+      leaveDays: leaveDays !== undefined && leaveDays !== "" ? parseInt(leaveDays) : employee.leaveDays,
+      joinDate: joinDate && !isNaN(new Date(joinDate).getTime()) ? new Date(joinDate) : employee.joinDate,
+      endDate: type !== 'permanent' && endDate && !isNaN(new Date(endDate).getTime()) ? new Date(endDate) : null,
       gender,
       staffId: normalizedStaffId,
       address,
