@@ -54,6 +54,7 @@ const employee = () => {
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [state, setState] = useState("");
   const [rent, setRent] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Payroll specific fields
   const [basicSalary, setBasicSalary] = useState('');
@@ -225,6 +226,7 @@ const employee = () => {
     formData.append('staffId', staffId);
     formData.append('dob', dob);
     formData.append('joinDate', joinDate);
+    formData.append('endDate', endDate);
     formData.append('gender', gender);
     formData.append('maritalStatus', maritalStatus);
     formData.append('department', selectedDepartment);
@@ -442,6 +444,7 @@ const employee = () => {
     if (!t) return '';
     const map = {
       permanent: 'Permanent',
+      visiting: 'Visiting',
       locum: 'Locum/Contract',
       consultant: 'Consultant',
       secondment: 'Secondment',
@@ -465,7 +468,46 @@ const employee = () => {
   const handleJoinDateChange = (e) => {
     const value = e.target.value;
     setJoinDate(value);
-    setDuration(calculateDuration(value));
+    // Calculate based on end date if provided for non-permanent, otherwise use current date
+    if (type !== 'permanent' && endDate) {
+      setDuration(calculateEmploymentPeriod(value, endDate));
+    } else {
+      setDuration(calculateDuration(value));
+    }
+  };
+
+  const handleEndDateChange = (e) => {
+    const value = e.target.value;
+    setEndDate(value);
+    if (type !== 'permanent' && joinDate) {
+      setDuration(calculateEmploymentPeriod(joinDate, value));
+    }
+  };
+
+  const calculateEmploymentPeriod = (startDate, endDateVal) => {
+    if (!startDate || !endDateVal) return "";
+
+    const start = new Date(startDate);
+    const end = new Date(endDateVal);
+
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+
+    // Fix negative days
+    if (days < 0) {
+      months--;
+      const previousMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+      days += previousMonth.getDate();
+    }
+
+    // Fix negative months
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    return `${years} year(s) ${months} month(s) ${days} day(s)`;
   };
 
 
@@ -493,12 +535,12 @@ const employee = () => {
 
       <div className='bg-white mt-6 rounded-lg shadow overflow-x-auto text-sm max-h-[80vh] min-h-[60vh]'>
         {/* Table Header */}
-        <div className='bg-gray-200 hidden sm:grid grid-cols-[0.5fr_3fr_2fr_2fr_1fr_1fr_3fr] py-3 px-6 rounded-t-xl border-b-4 border-green-500'>
+        <div className='bg-gray-200 hidden sm:grid grid-cols-[0.5fr_3fr_2fr_2fr_3fr_1fr_3fr] py-3 px-6 rounded-t-xl border-b-4 border-green-500'>
           <p>#</p>
           <p>Full Name</p>
           <p className="hidden md:block">Email</p>
           <p className="hidden lg:block">Department</p>
-          <p className="hidden lg:block">DOB</p>
+          <p className="hidden lg:block">Employment Period</p>
           <p className="hidden lg:block">Status</p>
           <p>Actions</p>
         </div>
@@ -508,7 +550,7 @@ const employee = () => {
           paginatedEmployees.map((item, index) => (
             <div
               key={index}
-              className="flex flex-col sm:grid sm:grid-cols-[0.5fr_3fr_2fr_2fr_1fr_1fr_3fr] items-center text-gray-500 py-3 px-6 border-b hover:bg-blue-50 gap-4 sm:gap-0"
+              className="flex flex-col sm:grid sm:grid-cols-[0.5fr_3fr_2fr_2fr_3fr_1fr_3fr] items-center text-gray-500 py-3 px-6 border-b hover:bg-blue-50 gap-4 sm:gap-0"
             >
               <p>{index + 1}</p>
 
@@ -528,7 +570,7 @@ const employee = () => {
               <p className="hidden lg:block text-sm">{item.department?.name}</p>
 
               <p className="hidden lg:block text-sm">
-                {new Date(item.dob).toLocaleDateString()}
+                {new Date(item.joinDate).toLocaleDateString()} {item.type !== 'permanent' && item.endDate ? ` - ${new Date(item.endDate).toLocaleDateString()}` : ''}
               </p>
 
               <p className="hidden lg:block text-sm font-semibold">
@@ -801,6 +843,7 @@ const employee = () => {
                     >
                       <option value="">Employee Type</option>
                       <option value="permanent">Permanent</option>
+                      <option value="visiting">Visiting</option>
                       <option value="locum">Locum/Contract</option>
                       <option value="consultant">Consultant</option>
                       <option value="secondment">Secondment</option>
@@ -822,11 +865,24 @@ const employee = () => {
                     className="w-full p-2 border border-green-300 rounded"
                   />
 
+                  {type !== 'permanent' && type && (
+                    <>
+                      <label className="block font-medium">End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={handleEndDateChange}
+                        required
+                        className="w-full p-2 border border-green-300 rounded"
+                      />
+                    </>
+                  )}
+
                   <input
                     type="text"
                     value={duration}
                     readOnly
-                    placeholder="Employee Duration in the Centre"
+                    placeholder={type && type !== 'permanent' ? "Employment Period" : "Employee Duration in the Centre"}
                     className="w-full p-2 border border-green-300 rounded bg-gray-100"
                   />
 
@@ -1014,7 +1070,8 @@ const employee = () => {
                 { label: "Address", value: selectedEmployee.address },
                 { label: "Leave Days", value: selectedEmployee.leaveDays },
                 { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
-                { label: "duration", value: selectedEmployee.duration },
+                { label: "End Date", value: selectedEmployee.type !== 'permanent' && selectedEmployee.endDate ? new Date(selectedEmployee.endDate).toLocaleDateString() : 'N/A' },
+                { label: "Duration", value: selectedEmployee.duration },
                 { label: "Experience", value: selectedEmployee.experience },
                 { label: "Qualification", value: selectedEmployee.qualification },
                 { label: "Role", value: selectedEmployee.userId?.role },
@@ -1167,6 +1224,7 @@ const employee = () => {
                   >
                     <option value="all">All Types</option>
                     <option value="permanent">Permanent</option>
+                    <option value="visiting">Visiting</option>
                     <option value="locum">Locum/Contract</option>
                     <option value="consultant">Consultant</option>
                     <option value="secondment">Secondment</option>
@@ -1250,6 +1308,7 @@ const employee = () => {
                           <th className="border p-2">Department</th>
                           <th className="border p-2">Qualification</th>
                           <th className="border p-2">Status</th>
+                          <th className="border p-2">Employment Period</th>
                           <th className="border p-2">Type</th>
                           <th className="border p-2">Action</th>
                         </tr>
@@ -1271,6 +1330,9 @@ const employee = () => {
                                   <span className="text-red-600 font-semibold" style={{ cursor: 'help' }}>Inactive</span>
                                 </Tooltip>
                               )}
+                            </td>
+                            <td className="border p-2">
+                              {new Date(emp.joinDate).toLocaleDateString()} {emp.type !== 'permanent' && emp.endDate ? ` - ${new Date(emp.endDate).toLocaleDateString()}` : ''}
                             </td>
                             <td className="border p-2">{formatTypeDisplay(emp.type)}</td>
                             <td className="border p-2">
@@ -1332,7 +1394,8 @@ const employee = () => {
                     { label: "Address", value: selectedEmployee.address },
                     { label: "Leave Days", value: selectedEmployee.leaveDays },
                     { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
-                    { label: "duration", value: selectedEmployee.duration },
+                    { label: "End Date", value: selectedEmployee.type !== 'permanent' && selectedEmployee.endDate ? new Date(selectedEmployee.endDate).toLocaleDateString() : 'N/A' },
+                    { label: "Duration", value: selectedEmployee.duration },
                     { label: "Experience", value: selectedEmployee.experience },
                     { label: "Qualification", value: selectedEmployee.qualification },
                     { label: "Role", value: selectedEmployee.userId?.role },
