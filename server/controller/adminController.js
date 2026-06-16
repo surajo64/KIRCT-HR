@@ -33,7 +33,7 @@ const addEmployee = async (req, res) => {
       designation, role, state,
       maritalStatus, dob, joinDate, duration, leaveDays,
       gender, staffId, address, password,
-      experience, qualification, type,
+      experience, qualification, type, endDate,
       // Payroll fields
       basicSalary, overtimeRate, taxIdentificationNumber,
       bankName, accountNumber, accountName
@@ -105,6 +105,7 @@ const addEmployee = async (req, res) => {
       dob,
       type,
       joinDate,
+      endDate,
       duration,
       leaveDays,
       gender,
@@ -153,7 +154,7 @@ const updateEmployee = async (req, res) => {
       leaveDays, joinDate,
       maritalStatus, dob, type, rent,
       gender, staffId, address, password,
-      experience, qualification,
+      experience, qualification, endDate,
       // Payroll fields
       basicSalary, overtimeRate, taxIdentificationNumber,
       bankName, accountNumber, accountName
