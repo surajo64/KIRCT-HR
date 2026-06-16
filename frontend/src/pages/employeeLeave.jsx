@@ -413,7 +413,7 @@ const EmployeeLeave = () => {
                   resumeDate.setHours(0, 0, 0, 0);
                   toDate.setHours(0, 0, 0, 0);
 
-                  const addedDays = Math.max(0, Math.ceil((resumeDate - toDate) / (1000 * 60 * 60 * 24)));
+                  const addedDays = Math.max(0, Math.ceil((resumeDate - toDate) / (1000 * 60 * 60 * 24)) - 1);
 
                   return (
                     <span className={`text-sm font-semibold px-3 py-1 rounded-full ${addedDays > 0

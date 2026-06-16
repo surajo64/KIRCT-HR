@@ -332,7 +332,7 @@ const leave = () => {
 
                     const addedDays = Math.max(
                       0,
-                      Math.ceil((resumeDate - toDate) / (1000 * 60 * 60 * 24))
+                      Math.ceil((resumeDate - toDate) / (1000 * 60 * 60 * 24)) - 1
                     );
 
                     return (

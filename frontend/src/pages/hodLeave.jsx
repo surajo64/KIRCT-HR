@@ -337,7 +337,7 @@ const hodLeave = () => {
                     const toDate = new Date(item.to);
                     resumeDate.setHours(0, 0, 0, 0);
                     toDate.setHours(0, 0, 0, 0);
-                    const addedDays = Math.max(0, Math.ceil((resumeDate - toDate) / (1000 * 60 * 60 * 24)));
+                    const addedDays = Math.max(0, Math.ceil((resumeDate - toDate) / (1000 * 60 * 60 * 24)) - 1);
 
                     return (
                       <span className={`text-sm font-semibold px-3 py-1 rounded-full ${addedDays > 0
@@ -718,7 +718,7 @@ const hodLeave = () => {
                         (new Date(selectedLeave.resumeDate).setHours(0, 0, 0, 0) -
                           new Date(selectedLeave.to).setHours(0, 0, 0, 0)) /
                           (1000 * 60 * 60 * 24)
-                      )
+                      ) - 1
                     )}{" "}
                     day(s) added)
                   </span>
