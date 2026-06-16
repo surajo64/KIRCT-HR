@@ -444,7 +444,7 @@ const employee = () => {
     if (!t) return '';
     const map = {
       permanent: 'Permanent',
-      visiting: 'Visiting',
+      probation: 'On Probation Period',
       locum: 'Locum/Contract',
       consultant: 'Consultant',
       secondment: 'Secondment',
@@ -843,7 +843,7 @@ const employee = () => {
                     >
                       <option value="">Employee Type</option>
                       <option value="permanent">Permanent</option>
-                      <option value="visiting">Visiting</option>
+                      <option value="probation">On Probation Period</option>
                       <option value="locum">Locum/Contract</option>
                       <option value="consultant">Consultant</option>
                       <option value="secondment">Secondment</option>
@@ -1224,7 +1224,7 @@ const employee = () => {
                   >
                     <option value="all">All Types</option>
                     <option value="permanent">Permanent</option>
-                    <option value="visiting">Visiting</option>
+                    <option value="probation">On Probation Period</option>
                     <option value="locum">Locum/Contract</option>
                     <option value="consultant">Consultant</option>
                     <option value="secondment">Secondment</option>

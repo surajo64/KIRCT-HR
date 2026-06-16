@@ -478,7 +478,7 @@ const employeeProfile = () => {
                   >
                     <option value="">Employee Type</option>
                     <option value="permanent">Permanent</option>
-                    <option value="visiting">Visiting</option>
+                    <option value="probation">On Probation Period</option>
                     <option value="locum">Locum/Contract</option>
                     <option value="consultant">Consultant</option>
                     <option value="nysc">NYSC</option>
