@@ -334,7 +334,10 @@ const employeeProfile = () => {
                     )
                   ),
                 },
-              ].map((item, index) => (
+              ].filter(item => {
+                if (item.label === "End Date" && employee.type === 'permanent') return false;
+                return true;
+              }).map((item, index) => (
                 <div key={index} className="flex border-b py-2">
                   <div className="font-semibold w-40">{item.label}:</div>
                   <div className="text-gray-800">{item.value}</div>

@@ -1070,7 +1070,7 @@ const employee = () => {
                 { label: "Address", value: selectedEmployee.address },
                 { label: "Leave Days", value: selectedEmployee.leaveDays },
                 { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
-                { label: "End Date", value: selectedEmployee.type !== 'permanent' && selectedEmployee.endDate ? new Date(selectedEmployee.endDate).toLocaleDateString() : 'N/A' },
+                { label: "End Date", value: selectedEmployee.endDate ? new Date(selectedEmployee.endDate).toLocaleDateString() : '' },
                 { label: "Duration", value: selectedEmployee.duration },
                 { label: "Experience", value: selectedEmployee.experience },
                 { label: "Qualification", value: selectedEmployee.qualification },
@@ -1120,7 +1120,10 @@ const employee = () => {
                     <span className="text-red-500">No CV uploaded</span>
                   ),
                 }
-              ].map((item, index) => (
+              ].filter(item => {
+                if (item.label === "End Date" && selectedEmployee.type === 'permanent') return false;
+                return true;
+              }).map((item, index) => (
                 <div key={index} className="flex border-b py-2">
                   <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
                   <div className="text-gray-800 break-words">{item.value}</div>
@@ -1394,7 +1397,7 @@ const employee = () => {
                     { label: "Address", value: selectedEmployee.address },
                     { label: "Leave Days", value: selectedEmployee.leaveDays },
                     { label: "Join Date", value: new Date(selectedEmployee.joinDate).toLocaleDateString() },
-                    { label: "End Date", value: selectedEmployee.type !== 'permanent' && selectedEmployee.endDate ? new Date(selectedEmployee.endDate).toLocaleDateString() : 'N/A' },
+                    { label: "End Date", value: selectedEmployee.endDate ? new Date(selectedEmployee.endDate).toLocaleDateString() : '' },
                     { label: "Duration", value: selectedEmployee.duration },
                     { label: "Experience", value: selectedEmployee.experience },
                     { label: "Qualification", value: selectedEmployee.qualification },
@@ -1434,7 +1437,10 @@ const employee = () => {
                         <span className="text-red-500">No CV uploaded</span>
                       ),
                     }
-                  ].map((item, index) => (
+                  ].filter(item => {
+                    if (item.label === "End Date" && selectedEmployee.type === 'permanent') return false;
+                    return true;
+                  }).map((item, index) => (
                     <div key={index} className="flex border-b py-2">
                       <div className="font-semibold w-32 sm:w-40">{item.label}:</div>
                       <div className="text-gray-800 break-words">{item.value}</div>
