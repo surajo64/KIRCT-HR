@@ -682,11 +682,12 @@ const addLeave = async (req, res) => {
 
     const initialLeaveDays = userRecord.leaveDays || 0;
 
-    // Calculate used leave days
+    // Calculate used leave days (only for Annual Leave)
     const Leave = mongoose.model("Leave");
     const approvedLeaves = await Leave.find({
       userId,
       status: "Approved",
+      leave: "Annual Leave", // Only count Annual Leave for balance
     });
 
     const usedLeaveDays = approvedLeaves.reduce(
@@ -695,8 +696,8 @@ const addLeave = async (req, res) => {
 
     const leaveBalance = Math.max(0, initialLeaveDays - usedLeaveDays);
 
-    // Check balance
-    if (totalWorkingDays > leaveBalance) {
+    // Check balance - only for Annual Leave
+    if (leave === "Annual Leave" && totalWorkingDays > leaveBalance) {
       return res.json({
         success: false,
         message: `Insufficient leave balance. You have ${leaveBalance} days remaining but requested ${totalWorkingDays} days.`,

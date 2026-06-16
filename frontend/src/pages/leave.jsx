@@ -512,6 +512,7 @@ const leave = () => {
                   <option value="Casual Leave">Casual Leave</option>
                   <option value="Compassionate Leave">Compassionate Leave</option>
                   <option value="Leave of Absence">Leave of Absence</option>
+                  <option value="Marriage Leave">Marriage Leave</option>
                   <option value="Maternity Leave">Maternity Leave</option>
                   <option value="Paternity Leave">Paternity Leave</option>
                   <option value="Sabbatical Leave">Sabbatical Leave</option>
