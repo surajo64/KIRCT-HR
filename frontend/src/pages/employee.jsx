@@ -583,7 +583,7 @@ const employee = () => {
                 )}
               </p>
 
-              <div className="flex justify-end gap-2 flex-wrap">
+              <div className="flex justify-end gap-2 whitespace-nowrap">
                 <button
                   onClick={() => handleView(item)}
                   className="bg-blue-500 text-white text-sm px-3 py-1 rounded-full"
