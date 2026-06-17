@@ -422,8 +422,7 @@ const fetchEmployees = async (req, res) => {
 
 
     const employee = await Employee.find({
-      department: departmentId,
-      userId: { $ne: userId }
+      department: departmentId
     })
       .populate('userId', 'name email role profileImage')
       .populate('department', 'name');
