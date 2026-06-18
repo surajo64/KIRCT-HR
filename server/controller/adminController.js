@@ -2254,8 +2254,7 @@ const applyLoan = async (req, res) => {
 
 // Update an existing loan
 const updateLoan = async (req, res) => {
-  const { loanId, durationInMonths, reason, approvedAmount } = req.body;
-  const userId = req.userId;
+  const { loanId, amount, durationInMonths, reason, approvedAmount } = req.body;
 
   try {
     const loan = await Loan.findById(loanId);
@@ -2264,20 +2263,28 @@ const updateLoan = async (req, res) => {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
-    // Only update reason, approvedAmount, and duration
-    loan.reason = reason;
-    loan.approvedAmount = approvedAmount;
-    loan.durationInMonths = durationInMonths;
+    // If it's still pending, allow updating the requested amount
+    if (loan.status === "Pending" && amount) {
+      loan.amount = amount;
+    }
 
-    // Calculate monthly deduction using approved amount
-    loan.monthDeduction = (approvedAmount / durationInMonths).toFixed(2);
+    // Only update fields if provided
+    if (reason) loan.reason = reason;
+    if (approvedAmount !== undefined) loan.approvedAmount = approvedAmount;
+    if (durationInMonths) loan.durationInMonths = durationInMonths;
+
+    // Use approvedAmount if set (usually by admin), otherwise fallback to requested amount
+    const effectiveAmount = loan.approvedAmount > 0 ? loan.approvedAmount : loan.amount;
+
+    // Calculate monthly deduction
+    loan.monthDeduction = (effectiveAmount / loan.durationInMonths).toFixed(2);
 
     await loan.save();
 
     res.json({ success: true, message: "Loan updated successfully", loan });
   } catch (error) {
     console.error("Loan update error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    res.status(500).json({ success: false, message: "Failed to update Loan", error: error.message });
   }
 };
 

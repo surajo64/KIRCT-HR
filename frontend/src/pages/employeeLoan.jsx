@@ -72,7 +72,7 @@ const employeeLoan = () => {
             }
         } catch (error) {
             console.error("Loan apply/update error:", error);
-            toast.error("Loan request failed");
+            toast.error(error.response?.data?.message || "Loan request failed");
         }
         finally {
             setIsLoading(false);
@@ -207,12 +207,12 @@ const employeeLoan = () => {
                             )
                         }
                         className={`py-2 px-4 rounded-md text-sm w-full sm:w-auto transition ${loans.length > 0 &&
-                                loans.some(
-                                    loan =>
-                                        loan.status !== "Completed" && loan.status !== "Rejected"
-                                )
-                                ? "bg-gray-400 text-white cursor-not-allowed"
-                                : "bg-green-500 hover:bg-green-600 text-white"
+                            loans.some(
+                                loan =>
+                                    loan.status !== "Completed" && loan.status !== "Rejected"
+                            )
+                            ? "bg-gray-400 text-white cursor-not-allowed"
+                            : "bg-green-500 hover:bg-green-600 text-white"
                             }`}
                     >
                         Apply Loan

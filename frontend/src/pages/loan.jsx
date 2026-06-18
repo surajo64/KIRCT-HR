@@ -96,7 +96,7 @@ const loan = () => {
             }
         } catch (error) {
             console.error("Loan apply/update error:", error);
-            toast.error("Loan request failed");
+            toast.error(error.response?.data?.message || "Loan request failed");
         } finally {
             setIsLoading(false);
         }
@@ -262,14 +262,14 @@ const loan = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className='px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 w-full sm:w-1/3'
                 />
- 
+
                 <div className="flex flex-col gap-2">
                     <button
                         onClick={handleAddNew}
                         disabled={hasPendingLoan}
                         className={`py-2 px-4 rounded-md text-sm w-full sm:w-auto transition ${hasPendingLoan
-                                ? "bg-gray-400 text-white cursor-not-allowed"
-                                : "bg-green-500 hover:bg-green-600 text-white"
+                            ? "bg-gray-400 text-white cursor-not-allowed"
+                            : "bg-green-500 hover:bg-green-600 text-white"
                             }`}
                     >
                         Apply Loan
