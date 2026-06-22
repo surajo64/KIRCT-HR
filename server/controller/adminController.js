@@ -345,7 +345,7 @@ const getAllEmployees = async (req, res) => {
     res.json({ success: true, employees });
 
   } catch (error) {
-    console.log(error);
+    console.error("Get All Employees Error:", error);
     res.json({ success: false, message: error.message });
   }
 }
@@ -1072,17 +1072,18 @@ const resumeLeave = async (req, res) => {
 const addSalary = async (req, res) => {
   try {
     // ----------------------------------------------------------
-    // 1️⃣ DOWNLOAD EXCEL FROM CLOUDINARY
+    // 1️⃣ READ EXCEL FROM MEMORY BUFFER
     // ----------------------------------------------------------
-    const fileUrl = req.file.path;
-    const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, message: "❌ No file uploaded." });
+    }
 
     // ----------------------------------------------------------
     // 2️⃣ PARSE EXCEL
     // ----------------------------------------------------------
-    const workbook = xlsx.read(response.data, { type: "buffer" });
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = xlsx.utils.sheet_to_json(sheet);
+    const data = xlsx.utils.sheet_to_json(sheet, { cellDates: true });
 
     if (!data || data.length === 0) {
       return res.status(400).json({
@@ -1348,26 +1349,32 @@ const addSalary = async (req, res) => {
   }
 };
 
-// Helper function to parse date in DD/MM/YYYY format
-function parseDate(dateString) {
-  if (!dateString) return null;
+// Helper function to parse date - handles Excel Date objects, DD/MM/YYYY strings, and native Date strings
+function parseDate(dateValue) {
+  if (!dateValue) return null;
 
-  // Handle DD/MM/YYYY format (common in Excel)
-  const parts = dateString.toString().split('/');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0]);
-    const month = parseInt(parts[1]) - 1; // Months are 0-indexed in JS
-    const year = parseInt(parts[2]);
+  // If xlsx already parsed it as a JS Date object (cellDates: true)
+  if (dateValue instanceof Date) {
+    return isNaN(dateValue.getTime()) ? null : dateValue;
+  }
 
+  const dateString = dateValue.toString().trim();
+
+  // Handle DD/MM/YYYY format (common in manually typed Excel cells)
+  const slashParts = dateString.split('/');
+  if (slashParts.length === 3) {
+    const day = parseInt(slashParts[0]);
+    const month = parseInt(slashParts[1]) - 1;
+    const year = parseInt(slashParts[2]);
     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
       const date = new Date(year, month, day);
-      return !isNaN(date) ? date : null;
+      return isNaN(date.getTime()) ? null : date;
     }
   }
 
-  // Fallback to native Date parsing
+  // Handle YYYY-MM-DD or other ISO formats
   const date = new Date(dateString);
-  return !isNaN(date) ? date : null;
+  return isNaN(date.getTime()) ? null : date;
 }
 
 // Helper function to get month name

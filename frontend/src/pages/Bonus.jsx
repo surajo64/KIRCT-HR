@@ -15,47 +15,48 @@ const Bonus = () => {
     const itemsPerPage = 10;
 
     // ✅ Fetch bonus records for the logged-in user
-useEffect(() => {
-  const fetchUserBonuses = async () => {
-    setIsLoading(true);
-    try {
-      const { data } = await axios.get(
-        `${backendUrl}/api/account/employee-bonus`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    useEffect(() => {
+        const fetchUserBonuses = async () => {
+            setIsLoading(true);
+            try {
+                const { data } = await axios.get(
+                    `${backendUrl}/api/account/employee-bonus`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
 
-      console.log("📦 API Response:", data);
+                console.log("📦 API Response:", data);
 
-      if (data.success && Array.isArray(data.bonuses)) {
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentUserId = currentUser?._id || currentUser?.id;
+                if (data.success && Array.isArray(data.bonuses)) {
+                    const currentUser = JSON.parse(localStorage.getItem("user"));
+                    const currentUserId = currentUser?._id || currentUser?.id;
 
-        // ✅ Filter for current user and "paid" bonuses only
-        const userBonuses = data.bonuses.filter(
-          (bonus) =>
-            (bonus.employee?._id === currentUserId ||
-              bonus.employee?.userId === currentUserId ||
-              bonus.staffId === currentUser?.staffId) &&
-            bonus.status?.toLowerCase() === "paid"
-        );
+                    // ✅ Filter for current user and "paid" bonuses only
+                    const userBonuses = data.bonuses.filter(
+                        (bonus) =>
+                            (bonus.employee?._id === currentUserId ||
+                                bonus.employee?.userId === currentUserId ||
+                                bonus.employee?.userId?._id === currentUserId ||
+                                bonus.staffId === currentUser?.staffId) &&
+                            bonus.status?.toLowerCase() === "paid"
+                    );
 
-        setBonusRecords(userBonuses);
-        console.log("✅ Paid user bonus records:", userBonuses);
-      } else {
-        toast.error(data.message || "Failed to fetch bonus records");
-      }
-    } catch (error) {
-      console.error("❌ Error loading bonus records:", error);
-      toast.error("Failed to load bonus records");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+                    setBonusRecords(userBonuses);
+                    console.log("✅ Paid user bonus records:", userBonuses);
+                } else {
+                    toast.error(data.message || "Failed to fetch bonus records");
+                }
+            } catch (error) {
+                console.error("❌ Error loading bonus records:", error);
+                toast.error("Failed to load bonus records");
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-  if (token) {
-    fetchUserBonuses();
-  }
-}, [token, backendUrl]);
+        if (token) {
+            fetchUserBonuses();
+        }
+    }, [token, backendUrl]);
 
 
 
@@ -308,8 +309,8 @@ useEffect(() => {
                                 }, 300);
                             }}
                             className={`px-6 py-2 rounded-lg font-medium transition-colors duration-200 ${currentPage === 1
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             Previous
@@ -329,8 +330,8 @@ useEffect(() => {
                                 }, 300);
                             }}
                             className={`px-6 py-2 rounded-lg font-medium transition-colors duration-200 ${currentPage >= totalPages
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                         >
                             Next
@@ -386,8 +387,8 @@ useEffect(() => {
                                         <p><strong>Payment Date:</strong> {new Date(selectedBonusRecord.paymentDate).toLocaleDateString()}</p>
                                         <p><strong>Status:</strong>
                                             <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${selectedBonusRecord.status === 'paid'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-yellow-100 text-yellow-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-yellow-100 text-yellow-800'
                                                 }`}>
                                                 {selectedBonusRecord.status?.toUpperCase()}
                                             </span>

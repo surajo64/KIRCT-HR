@@ -712,10 +712,10 @@ export const downloadExcel = async (req, res) => {
     // Style header row
     const headerRow = worksheet.getRow(3); // actual header after title + empty row
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = { 
-      type: 'pattern', 
-      pattern: 'solid', 
-      fgColor: { argb: 'FF2E86AB' } 
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2E86AB' }
     };
     headerRow.alignment = { horizontal: 'center' };
 
@@ -769,31 +769,31 @@ export const downloadExcel = async (req, res) => {
     });
 
     // Set numeric formatting (currency & hours) - CORRECTED column references
-    const currencyCols = ['J','K','L','N','O','P','Q','R','S','T','U','V','W','X','Y'];
+    const currencyCols = ['J', 'K', 'L', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
     currencyCols.forEach(col => {
       const column = worksheet.getColumn(col);
-      if (col === 'M') { 
+      if (col === 'M') {
         // Overtime Hours column
-        column.numFmt = '0.00'; 
-        column.alignment = { horizontal: 'right' }; 
-      } else { 
+        column.numFmt = '0.00';
+        column.alignment = { horizontal: 'right' };
+      } else {
         // Currency columns
-        column.numFmt = '"₦"#,##0.00'; 
-        column.alignment = { horizontal: 'right' }; 
+        column.numFmt = '"₦"#,##0.00';
+        column.alignment = { horizontal: 'right' };
       }
     });
 
     // Align columns - CORRECTED column references
     // Center align: S/N, Staff ID, Month, Year, Status
-    ['A','B','E','F','Z'].forEach(col => {
+    ['A', 'B', 'E', 'F', 'Z'].forEach(col => {
       const column = worksheet.getColumn(col);
       if (column) {
         column.alignment = { horizontal: 'center' };
       }
     });
-    
+
     // Left align: Name, Department, Bank fields
-    ['C','D','G','H','I'].forEach(col => {
+    ['C', 'D', 'G', 'H', 'I'].forEach(col => {
       const column = worksheet.getColumn(col);
       if (column) {
         column.alignment = { horizontal: 'left' };
@@ -834,14 +834,14 @@ export const downloadExcel = async (req, res) => {
 
     // Style summary row
     summaryRow.font = { bold: true };
-    summaryRow.fill = { 
-      type: 'pattern', 
-      pattern: 'solid', 
-      fgColor: { argb: 'FFF0F0F0' } 
+    summaryRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF0F0F0' }
     };
 
     // Format summary row currency cells
-    const summaryCurrencyCols = ['J','K','L','O','P','Q','R','S','T','U','V','W','X','Y'];
+    const summaryCurrencyCols = ['J', 'K', 'L', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
     summaryCurrencyCols.forEach(col => {
       const cell = summaryRow.getCell(col);
       cell.numFmt = '"₦"#,##0.00';
@@ -854,15 +854,15 @@ export const downloadExcel = async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=payroll-${month}-${year}.xlsx`);
     const buffer = await workbook.xlsx.writeBuffer();
-    
+
     console.log(`Excel file generated successfully with ${payrolls.length} records`);
     res.send(buffer);
 
   } catch (error) {
     console.error('Error in downloadExcel:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate Excel file: ' + error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate Excel file: ' + error.message
     });
   }
 };
@@ -1127,7 +1127,7 @@ export const getBonusHistory = async (req, res) => {
 
     const bonuses = await Bonus.find(filter)
       .populate([
-        { path: "employee", select: "name staffId department designation", populate: { path: "department", select: "name designation" } }
+        { path: "employee", select: "name staffId department designation userId", populate: { path: "department", select: "name designation" } }
       ]).sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -1159,7 +1159,7 @@ export const getEmployeeBonusHistory = async (req, res) => {
   try {
     const bonuses = await Bonus.find()
       .populate([
-        { path: "employee", select: "name staffId department designation", populate: { path: "department", select: "name designation" } }
+        { path: "employee", select: "name staffId department designation userId", populate: { path: "department", select: "name designation" } }
       ]);
 
 
@@ -1538,7 +1538,7 @@ export const getOtherBonusHistory = async (req, res) => {
     if (staffId) query.staffId = staffId; // 👈 filter by staffId
 
     const bonuses = await Bonus.find(query)
-      .populate("employee", "name staffId basicSalary")
+      .populate("employee", "name staffId basicSalary userId")
       .sort({ createdAt: -1 });
 
     res.status(200).json({

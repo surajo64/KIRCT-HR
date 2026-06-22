@@ -1,24 +1,27 @@
 import express from 'express'
 import authUser from '../middlewares/authUser.js';
-import { addDepartment, addEmployee, addLeave, addSalary, adminEvaluation, applyLoan, approveHodLeave, approveLeave,
-     approveRejectLoan,
-     changePassword,
-     deactivateEmployee,
-     deleteDepartment, deleteEmployee, deleteLeave, fetchEmployees, forgotPassword, getAllAttendance, getAllDepartment, 
-     getAllEmployees, getAllevaluations, getAllLeaves,getAllSalaries,getAllUsers,getAllyLoan,getAttendance,getEmployeeDashboardData,getEmployeeLeaves,  
-    getEmployeeLoan,  
-    getEmployeeSalaries, 
-    getEmployeesByStatus, 
-    getKpi, 
-    getKpiByDepartment, 
-    getLeaveToHod, 
-    getUsers, 
-    hodEvaluation, 
-    rejectHodLeave, 
+import {
+    addDepartment, addEmployee, addLeave, addSalary, adminEvaluation, applyLoan, approveHodLeave, approveLeave,
+    approveRejectLoan,
+    changePassword,
+    deactivateEmployee,
+    deleteDepartment, deleteEmployee, deleteLeave, fetchEmployees, forgotPassword, getAllAttendance, getAllDepartment,
+    getAllEmployees, getAllevaluations, getAllLeaves, getAllSalaries, getAllUsers, getAllyLoan, getAttendance, getEmployeeDashboardData, getEmployeeLeaves,
+    getEmployeeLoan,
+    getEmployeeSalaries,
+    getEmployeesByStatus,
+    getKpi,
+    getKpiByDepartment,
+    getLeaveToHod,
+    getUsers,
+    hodEvaluation,
+    rejectHodLeave,
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
-    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus} from '../controller/adminController.js';
+    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus
+} from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
+import uploadMemory from '../middlewares/multerMemory.js';
 
 
 
@@ -26,69 +29,69 @@ import upload from '../middlewares/multer.js';
 const adminRouter = express.Router();
 
 // routes for Department
-adminRouter.post('/add-department', authUser, addDepartment );
-adminRouter.get('/department-list', authUser,getAllDepartment );
+adminRouter.post('/add-department', authUser, addDepartment);
+adminRouter.get('/department-list', authUser, getAllDepartment);
 adminRouter.post('/update-department', authUser, updateDepartment);
-adminRouter.delete('/delete-department/:id',authUser, deleteDepartment);
+adminRouter.delete('/delete-department/:id', authUser, deleteDepartment);
 
 
 // routes for Employee
-adminRouter.post('/add-employee',authUser,  upload.fields([{ name: 'image', maxCount: 1 },{ name: 'cv', maxCount: 1 }  ]),  addEmployee);
-adminRouter.get('/employee-list', authUser,fetchEmployees );
-adminRouter.post('/update-employee', authUser, upload.fields([{ name: 'image', maxCount: 1 },{ name: 'cv', maxCount: 1 }  ]), updateEmployee);
+adminRouter.post('/add-employee', authUser, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'cv', maxCount: 1 }]), addEmployee);
+adminRouter.get('/employee-list', authUser, fetchEmployees);
+adminRouter.post('/update-employee', authUser, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'cv', maxCount: 1 }]), updateEmployee);
 adminRouter.delete('/delete-employee/:id', deleteEmployee);
-adminRouter.get('/employee-leave',authUser, getEmployeeLeaves );
+adminRouter.get('/employee-leave', authUser, getEmployeeLeaves);
 adminRouter.get('/get-all-employees', authUser, getAllEmployees);
 adminRouter.get('/employees', authUser, getEmployeesByStatus);
-adminRouter.post("/deactivate-employee",authUser, deactivateEmployee);
+adminRouter.post("/deactivate-employee", authUser, deactivateEmployee);
 
 
 
 // employee leave
-adminRouter.post('/add-leave',authUser, addLeave );
-adminRouter.get('/leave-list', getAllLeaves  );
-adminRouter.post('/update-leave',authUser, updateLeave );
-adminRouter.post('/admin-update-leave',authUser, adminUpdateLeaveStatus );
-adminRouter.delete('/delete-leave/:id',authUser, deleteLeave);
-adminRouter.post('/approve-leave',authUser, approveLeave );
-adminRouter.post('/reject-leave',authUser, rejectLeave );
-adminRouter.get('/employee-dashboard', authUser, getEmployeeDashboardData  );
-adminRouter.post('/leave-resumed',authUser, resumeLeave );
+adminRouter.post('/add-leave', authUser, addLeave);
+adminRouter.get('/leave-list', getAllLeaves);
+adminRouter.post('/update-leave', authUser, updateLeave);
+adminRouter.post('/admin-update-leave', authUser, adminUpdateLeaveStatus);
+adminRouter.delete('/delete-leave/:id', authUser, deleteLeave);
+adminRouter.post('/approve-leave', authUser, approveLeave);
+adminRouter.post('/reject-leave', authUser, rejectLeave);
+adminRouter.get('/employee-dashboard', authUser, getEmployeeDashboardData);
+adminRouter.post('/leave-resumed', authUser, resumeLeave);
 
 
 // HOD Leaves
 adminRouter.get('/hod-leave', authUser, getLeaveToHod);
-adminRouter.post('/hod-approve',authUser, approveHodLeave );
-adminRouter.post('/hod-reject',authUser, rejectHodLeave );
-adminRouter.post('/hod-update-leave',authUser, hodUpdateLeave );
+adminRouter.post('/hod-approve', authUser, approveHodLeave);
+adminRouter.post('/hod-reject', authUser, rejectHodLeave);
+adminRouter.post('/hod-update-leave', authUser, hodUpdateLeave);
 adminRouter.get('/hod-dashboard', authUser, getHodDashboard);
 
 
 
 
 //salary Routes
-adminRouter.post('/add-salary', authUser, upload.single('file'), addSalary);
+adminRouter.post('/add-salary', authUser, uploadMemory.single('file'), addSalary);
 adminRouter.get('/get-salaries', authUser, getAllSalaries);
 adminRouter.get('/get-employee-salaries', authUser, getEmployeeSalaries);
 
 
 // Password Category
 
-adminRouter.post('/change-password',authUser, changePassword);
-adminRouter.post('/forgot-password',  forgotPassword)
+adminRouter.post('/change-password', authUser, changePassword);
+adminRouter.post('/forgot-password', forgotPassword)
 adminRouter.post("/reset-password/:token", resetPassword)
 
 
 // Performance evaluation
-adminRouter.post('/admin-evaluation',authUser,adminEvaluation);
-adminRouter.post('/update-admin-evaluation',authUser, updateAdminEvaluation);
-adminRouter.post('/hod-evaluation',authUser, hodEvaluation);
+adminRouter.post('/admin-evaluation', authUser, adminEvaluation);
+adminRouter.post('/update-admin-evaluation', authUser, updateAdminEvaluation);
+adminRouter.post('/hod-evaluation', authUser, hodEvaluation);
 adminRouter.get('/evaluation-list', authUser, getAllevaluations);
-adminRouter.post('/update-evaluation',authUser,updateEvaluation);
+adminRouter.post('/update-evaluation', authUser, updateEvaluation);
 adminRouter.get('/search-users', authUser, getUsers);
 
 // employee KPI
-adminRouter.post('/kpi',authUser,submitKpi);
+adminRouter.post('/kpi', authUser, submitKpi);
 adminRouter.get('/get-kpi', authUser, getKpi);
 adminRouter.get('/get-departmentkpi', authUser, getKpiByDepartment);
 adminRouter.get('/get-employees', authUser, getAllEmployees);
