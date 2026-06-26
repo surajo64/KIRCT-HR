@@ -288,25 +288,25 @@ const EmployeeLeave = () => {
   };
 
   const calculateDays = (from, to) => {
-  if (!from || !to) return "N/A";
+    if (!from || !to) return "N/A";
 
-  const start = new Date(from);
-  const end = new Date(to);
+    const start = new Date(from);
+    const end = new Date(to);
 
-  if (end < start) return "Invalid Dates";
+    if (end < start) return "Invalid Dates";
 
-  let count = 0;
-  let current = new Date(start);
+    let count = 0;
+    let current = new Date(start);
 
-  while (current <= end) {
-    const day = current.getDay();
-    // 0 = Sunday, 6 = Saturday → skip weekends
-    if (day !== 0 && day !== 6) count++;
-    current.setDate(current.getDate() + 1);
-  }
+    while (current <= end) {
+      const day = current.getDay();
+      // 0 = Sunday, 6 = Saturday → skip weekends
+      if (day !== 0 && day !== 6) count++;
+      current.setDate(current.getDate() + 1);
+    }
 
-  return count;
-};
+    return count;
+  };
 
 
 
@@ -423,6 +423,13 @@ const EmployeeLeave = () => {
                     </span>
                   );
                 })() : item.status === "Approved" ? (() => {
+                  if (item.isPaused) {
+                    return (
+                      <span className="text-sm font-semibold px-3 py-1 rounded-full text-orange-700 bg-orange-100">
+                        Paused on {new Date(item.pauseDate).toLocaleDateString()}
+                      </span>
+                    );
+                  }
                   const today = new Date();
                   const from = new Date(item.from);
                   const to = new Date(item.to);
@@ -638,7 +645,7 @@ const EmployeeLeave = () => {
                     </td>
                   </tr>
 
-                  
+
                   <tr className="border-b">
                     <th className="px-4 py-2 font-medium bg-gray-50">HR Approval</th>
                     <td className="px-4 py-2">
