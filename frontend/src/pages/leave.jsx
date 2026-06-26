@@ -105,12 +105,51 @@ const leave = () => {
       } else {
         toast.error(data.message)
       }
-    } catch (error) {
-      console.error("Error approving appointment:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Pause Leave
+  const pauseLeave = async (leaveId) => {
+    setIsLoading(true);
+    try {
+      const { data } = await axios.post(backendUrl + '/api/admin/pause-leave', { leaveId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        toast.success(data.message);
+        getAllLeaves();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Resume Leave Counting
+  const resumeLeaveCounting = async (leaveId) => {
+    setIsLoading(true);
+    try {
+      const { data } = await axios.post(backendUrl + '/api/admin/resume-leave-counting', { leaveId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        toast.success(data.message);
+        getAllLeaves();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
 
 
@@ -269,7 +308,7 @@ const leave = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className='w-full sm:w-1/3 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500'
         />
-        
+
         <select
           value={leaveTypeFilter}
           onChange={(e) => setLeaveTypeFilter(e.target.value)}
@@ -348,6 +387,13 @@ const leave = () => {
                     );
                   })()
                     : item.status === "Approved" ? (() => {
+                      if (item.isPaused) {
+                        return (
+                          <span className="text-sm font-semibold px-3 py-1 rounded-full text-orange-700 bg-orange-100">
+                            Paused on {new Date(item.pauseDate).toLocaleDateString()}
+                          </span>
+                        );
+                      }
                       if (!item.from || !item.to) return "0 Days";
 
                       const today = new Date();
@@ -388,9 +434,7 @@ const leave = () => {
                       }
                     })()
                       : "0 Days"}
-
                 </p>
-
 
                 {/* Actions */}
                 <div className="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
@@ -415,7 +459,7 @@ const leave = () => {
                     View
                   </button>
 
-                  {(
+                  {item.status !== "Approved" && (
                     <button
                       onClick={() => handleUpdate(item)}
                       className="bg-green-500 text-white text-sm px-3 py-1 rounded-full"
@@ -423,7 +467,30 @@ const leave = () => {
                       Update
                     </button>
                   )}
+
+                  {item.status === "Approved" && !item.resumeStatus && (
+                    item.isPaused ? (
+                      <button
+                        onClick={() => resumeLeaveCounting(item._id)}
+                        className="bg-purple-500 text-white text-sm px-3 py-1 rounded-full"
+                      >
+                        Resume Leave
+                      </button>
+                    ) : (
+                      new Date(item.from).setHours(0, 0, 0, 0) <= today.setHours(0, 0, 0, 0) &&
+                      new Date(item.to).setHours(0, 0, 0, 0) > today.setHours(0, 0, 0, 0) && (
+                        <button
+                          onClick={() => pauseLeave(item._id)}
+                          className="bg-orange-500 text-white text-sm px-3 py-1 rounded-full"
+                        >
+                          Pause Leave
+                        </button>
+                      )
+                    )
+
+                  )}
                 </div>
+
               </div>
             );
           })
@@ -607,220 +674,221 @@ const leave = () => {
       }
 
 
-      {selectedLeave && getAllLeaves && (
+      {
+        selectedLeave && getAllLeaves && (
 
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-60 flex justify-center items-center p-4">
-          <div id="print-salary-table"
-            className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-4 sm:p-8 relative"
-          >
-
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedLeave(null)}
-              className="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-2xl font-bold"
+          <div className="fixed inset-0 z-50 bg-black bg-opacity-60 flex justify-center items-center p-4">
+            <div id="print-salary-table"
+              className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-4 sm:p-8 relative"
             >
-              &times;
-            </button>
 
-            {/* Name */}
-            <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-4 break-words">
-              {selectedLeave.userId?.name?.toUpperCase() || "N/A"}
-            </h2>
-
-            {/* Profile Image */}
-            <div className="flex justify-center mb-4">
-              <img
-                src={selectedLeave.userId?.profileImage}
-                alt="Profile"
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border"
-              />
-            </div>
-
-            {/* Email & Department */}
-            <div className="flex flex-col sm:flex-row justify-center sm:gap-8 gap-2 text-sm text-gray-800 mb-6 text-center">
-              <div>
-                <span className="font-semibold text-green-800">Email:</span>{" "}
-                {selectedLeave.userId?.email || "N/A"}
-              </div>
-              <div>
-                <span className="font-semibold text-green-800">Department:</span>{" "}
-                {selectedLeave.userId?.department?.name || "N/A"}
-              </div>
-            </div>
-
-            {/* Table for Desktop */}
-            <div className="hidden sm:block">
-              <table className="w-full text-sm text-left text-gray-700 border border-gray-200 rounded-md">
-                <tbody>
-                  {[
-                    { label: "Leave Type", value: selectedLeave.leave },
-                    { label: "Reason", value: selectedLeave.reason },
-                    { label: "From", value: new Date(selectedLeave.from).toISOString().split("T")[0] },
-                    { label: "To", value: new Date(selectedLeave.to).toISOString().split("T")[0] },
-                    {
-                      label: "Days",
-                      value: calculateDays(selectedLeave.from, selectedLeave.to)
-                    },
-                    { label: "Applied On", value: new Date(selectedLeave.appliedAt).toISOString().split("T")[0] },
-                    { label: "Relieving Staff", value: selectedLeave.relievingEId?.name || "N/A" },
-                    {
-                      label: "HOD Approval",
-                      value: (
-                        <span className={`font-semibold px-2 py-1 rounded 
-                    ${selectedLeave.hodStatus === 'Approved' ? 'text-green-600 bg-green-100' :
-                            selectedLeave.hodStatus === 'Rejected' ? 'text-red-600 bg-red-100' :
-                              'text-yellow-600 bg-yellow-100'}`}>
-                          {selectedLeave.hodStatus}
-                        </span>
-                      )
-                    },
-                    { label: "HOD Comments", value: selectedLeave.hodComments || "N/A" },
-                    {
-                      label: "HR Approval",
-                      value: (
-                        <span className={`font-semibold px-2 py-1 rounded 
-                    ${selectedLeave.status === 'Approved' ? 'text-green-600 bg-green-100' :
-                            selectedLeave.status === 'Rejected' ? 'text-red-600 bg-red-100' :
-                              'text-yellow-600 bg-yellow-100'}`}>
-                          {selectedLeave.status}
-                        </span>
-                      )
-                    },
-                    { label: "HR Comments", value: selectedLeave.hrComments || "N/A" },
-                    {
-                      label: "Status",
-                      value: selectedLeave.resumeStatus ? (
-                        <span className="text-green-700 text-sm font-semibold bg-green-100 px-3 py-1 rounded-full">
-                          Resumed on {new Date(selectedLeave.resumeDate).toLocaleDateString()} (
-                          {Math.max(
-                            0,
-                            Math.ceil(
-                              (new Date(selectedLeave.resumeDate).setHours(0, 0, 0, 0) -
-                                new Date(selectedLeave.to).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)
-                            )
-                          )} day(s) added)
-                        </span>
-                      ) : (() => {
-                        const today = new Date();
-                        const from = new Date(selectedLeave.from);
-                        const to = new Date(selectedLeave.to);
-                        today.setHours(0, 0, 0, 0);
-                        from.setHours(0, 0, 0, 0);
-                        to.setHours(0, 0, 0, 0);
-
-                        if (today < from) {
-                          const days = Math.ceil((from - today) / (1000 * 60 * 60 * 24));
-                          return <span style={{ color: "goldenrod", fontWeight: "bold" }}>{days} day(s) to Go</span>;
-                        } else if (today >= from && today < to) {
-                          const days = Math.ceil((to - today) / (1000 * 60 * 60 * 24));
-                          return <span style={{ color: "green", fontWeight: "bold" }}>{days} day(s) remaining</span>;
-                        } else if (today.getTime() === to.getTime()) {
-                          return <span style={{ color: "blue", fontWeight: "bold" }}>Returning today</span>;
-                        } else {
-                          const days = Math.ceil((today - to) / (1000 * 60 * 60 * 24));
-                          return <span style={{ color: "red", fontWeight: "bold" }}>Leave ended — He/She added {days} day(s)</span>;
-                        }
-                      })()
-                    }
-                  ].map((item, idx) => (
-                    <tr key={idx} className="border-b">
-                      <th className="px-4 py-2 font-medium bg-gray-50 w-40">{item.label}</th>
-                      <td className="px-4 py-2">{item.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile-Friendly Version */}
-            <div className="sm:hidden space-y-4 text-sm text-gray-700 mt-4">
-              {[
-                { label: "Leave Type", value: selectedLeave.leave },
-                { label: "Reason", value: selectedLeave.reason },
-                { label: "From", value: new Date(selectedLeave.from).toISOString().split("T")[0] },
-                { label: "To", value: new Date(selectedLeave.to).toISOString().split("T")[0] },
-                { label: "Days", value: calculateDays(selectedLeave.from, selectedLeave.to) },
-                { label: "Applied On", value: new Date(selectedLeave.appliedAt).toISOString().split("T")[0] },
-                { label: "Relieving Staff", value: selectedLeave.relievingEId?.name || "N/A" },
-                { label: "HOD Approval", value: selectedLeave.hodStatus },
-                { label: "Admin Approval", value: selectedLeave.status },
-                {
-                  label: "Status",
-                  value: selectedLeave.resumeStatus
-                    ? `Resumed on ${new Date(selectedLeave.resumeDate).toLocaleDateString()}`
-                    : "Ongoing"
-                },
-                { label: "HR Comments", value: selectedLeave.hrComments?.name || "N/A" },
-              ].map((item, idx) => (
-                <div key={idx} className="border-b pb-2">
-                  <div className="text-gray-500 font-semibold">{item.label}</div>
-                  <div className="text-gray-800">{item.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Print Button */}
-            <div className="flex justify-center mt-6">
+              {/* Close Button */}
               <button
-                onClick={() => {
-                  const content = document.getElementById("print-salary-table").innerHTML;
-                  const printWindow = window.open("", "", "height=800,width=1000");
-                  printWindow.document.write("<html><head><title>Leave Details History</title>");
-                  printWindow.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css">');
-                  printWindow.document.write("</head><body>");
-                  printWindow.document.write(content);
-                  printWindow.document.write("</body></html>");
-                  printWindow.document.close();
-                  printWindow.focus();
-                  printWindow.print();
-                }}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm"
+                onClick={() => setSelectedLeave(null)}
+                className="absolute top-3 right-4 text-gray-400 hover:text-red-500 text-2xl font-bold"
               >
-                Print
+                &times;
               </button>
-            </div>
 
-            {/* Relieving Staff Dropdown */}
-            {selectedLeave.status === "Pending" && (
-              <div className="mt-6">
+              {/* Name */}
+              <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-4 break-words">
+                {selectedLeave.userId?.name?.toUpperCase() || "N/A"}
+              </h2>
 
-                {/* Comment Textarea */}
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="HR Remarks and comments"
-                  rows={3}
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm mt-4"
+              {/* Profile Image */}
+              <div className="flex justify-center mb-4">
+                <img
+                  src={selectedLeave.userId?.profileImage}
+                  alt="Profile"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border"
                 />
               </div>
-            )}
 
-            {/* Action Buttons */}
-            {selectedLeave.status === "Pending" && (
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              {/* Email & Department */}
+              <div className="flex flex-col sm:flex-row justify-center sm:gap-8 gap-2 text-sm text-gray-800 mb-6 text-center">
+                <div>
+                  <span className="font-semibold text-green-800">Email:</span>{" "}
+                  {selectedLeave.userId?.email || "N/A"}
+                </div>
+                <div>
+                  <span className="font-semibold text-green-800">Department:</span>{" "}
+                  {selectedLeave.userId?.department?.name || "N/A"}
+                </div>
+              </div>
+
+              {/* Table for Desktop */}
+              <div className="hidden sm:block">
+                <table className="w-full text-sm text-left text-gray-700 border border-gray-200 rounded-md">
+                  <tbody>
+                    {[
+                      { label: "Leave Type", value: selectedLeave.leave },
+                      { label: "Reason", value: selectedLeave.reason },
+                      { label: "From", value: new Date(selectedLeave.from).toISOString().split("T")[0] },
+                      { label: "To", value: new Date(selectedLeave.to).toISOString().split("T")[0] },
+                      {
+                        label: "Days",
+                        value: calculateDays(selectedLeave.from, selectedLeave.to)
+                      },
+                      { label: "Applied On", value: new Date(selectedLeave.appliedAt).toISOString().split("T")[0] },
+                      { label: "Relieving Staff", value: selectedLeave.relievingEId?.name || "N/A" },
+                      {
+                        label: "HOD Approval",
+                        value: (
+                          <span className={`font-semibold px-2 py-1 rounded 
+                    ${selectedLeave.hodStatus === 'Approved' ? 'text-green-600 bg-green-100' :
+                              selectedLeave.hodStatus === 'Rejected' ? 'text-red-600 bg-red-100' :
+                                'text-yellow-600 bg-yellow-100'}`}>
+                            {selectedLeave.hodStatus}
+                          </span>
+                        )
+                      },
+                      { label: "HOD Comments", value: selectedLeave.hodComments || "N/A" },
+                      {
+                        label: "HR Approval",
+                        value: (
+                          <span className={`font-semibold px-2 py-1 rounded 
+                    ${selectedLeave.status === 'Approved' ? 'text-green-600 bg-green-100' :
+                              selectedLeave.status === 'Rejected' ? 'text-red-600 bg-red-100' :
+                                'text-yellow-600 bg-yellow-100'}`}>
+                            {selectedLeave.status}
+                          </span>
+                        )
+                      },
+                      { label: "HR Comments", value: selectedLeave.hrComments || "N/A" },
+                      {
+                        label: "Status",
+                        value: selectedLeave.resumeStatus ? (
+                          <span className="text-green-700 text-sm font-semibold bg-green-100 px-3 py-1 rounded-full">
+                            Resumed on {new Date(selectedLeave.resumeDate).toLocaleDateString()} (
+                            {Math.max(
+                              0,
+                              Math.ceil(
+                                (new Date(selectedLeave.resumeDate).setHours(0, 0, 0, 0) -
+                                  new Date(selectedLeave.to).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)
+                              )
+                            )} day(s) added)
+                          </span>
+                        ) : (() => {
+                          const today = new Date();
+                          const from = new Date(selectedLeave.from);
+                          const to = new Date(selectedLeave.to);
+                          today.setHours(0, 0, 0, 0);
+                          from.setHours(0, 0, 0, 0);
+                          to.setHours(0, 0, 0, 0);
+
+                          if (today < from) {
+                            const days = Math.ceil((from - today) / (1000 * 60 * 60 * 24));
+                            return <span style={{ color: "goldenrod", fontWeight: "bold" }}>{days} day(s) to Go</span>;
+                          } else if (today >= from && today < to) {
+                            const days = Math.ceil((to - today) / (1000 * 60 * 60 * 24));
+                            return <span style={{ color: "green", fontWeight: "bold" }}>{days} day(s) remaining</span>;
+                          } else if (today.getTime() === to.getTime()) {
+                            return <span style={{ color: "blue", fontWeight: "bold" }}>Returning today</span>;
+                          } else {
+                            const days = Math.ceil((today - to) / (1000 * 60 * 60 * 24));
+                            return <span style={{ color: "red", fontWeight: "bold" }}>Leave ended — He/She added {days} day(s)</span>;
+                          }
+                        })()
+                      }
+                    ].map((item, idx) => (
+                      <tr key={idx} className="border-b">
+                        <th className="px-4 py-2 font-medium bg-gray-50 w-40">{item.label}</th>
+                        <td className="px-4 py-2">{item.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile-Friendly Version */}
+              <div className="sm:hidden space-y-4 text-sm text-gray-700 mt-4">
+                {[
+                  { label: "Leave Type", value: selectedLeave.leave },
+                  { label: "Reason", value: selectedLeave.reason },
+                  { label: "From", value: new Date(selectedLeave.from).toISOString().split("T")[0] },
+                  { label: "To", value: new Date(selectedLeave.to).toISOString().split("T")[0] },
+                  { label: "Days", value: calculateDays(selectedLeave.from, selectedLeave.to) },
+                  { label: "Applied On", value: new Date(selectedLeave.appliedAt).toISOString().split("T")[0] },
+                  { label: "Relieving Staff", value: selectedLeave.relievingEId?.name || "N/A" },
+                  { label: "HOD Approval", value: selectedLeave.hodStatus },
+                  { label: "Admin Approval", value: selectedLeave.status },
+                  {
+                    label: "Status",
+                    value: selectedLeave.resumeStatus
+                      ? `Resumed on ${new Date(selectedLeave.resumeDate).toLocaleDateString()}`
+                      : "Ongoing"
+                  },
+                  { label: "HR Comments", value: selectedLeave.hrComments?.name || "N/A" },
+                ].map((item, idx) => (
+                  <div key={idx} className="border-b pb-2">
+                    <div className="text-gray-500 font-semibold">{item.label}</div>
+                    <div className="text-gray-800">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Print Button */}
+              <div className="flex justify-center mt-6">
                 <button
-                  onClick={() => setSelectedLeave(null)}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-5 py-2 rounded-full font-medium w-full sm:w-auto"
+                  onClick={() => {
+                    const content = document.getElementById("print-salary-table").innerHTML;
+                    const printWindow = window.open("", "", "height=800,width=1000");
+                    printWindow.document.write("<html><head><title>Leave Details History</title>");
+                    printWindow.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css">');
+                    printWindow.document.write("</head><body>");
+                    printWindow.document.write(content);
+                    printWindow.document.write("</body></html>");
+                    printWindow.document.close();
+                    printWindow.focus();
+                    printWindow.print();
+                  }}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleApproved(selectedLeave._id, "Approved")}
-                  className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-full font-medium w-full sm:w-auto"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleReject(selectedLeave._id, "Rejected")}
-                  className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-full font-medium w-full sm:w-auto"
-                >
-                  Reject
+                  Print
                 </button>
               </div>
-            )}
+
+              {/* Relieving Staff Dropdown */}
+              {selectedLeave.status === "Pending" && (
+                <div className="mt-6">
+
+                  {/* Comment Textarea */}
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="HR Remarks and comments"
+                    rows={3}
+                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm mt-4"
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {selectedLeave.status === "Pending" && (
+                <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setSelectedLeave(null)}
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-5 py-2 rounded-full font-medium w-full sm:w-auto"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleApproved(selectedLeave._id, "Approved")}
+                    className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-full font-medium w-full sm:w-auto"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleReject(selectedLeave._id, "Rejected")}
+                    className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-full font-medium w-full sm:w-auto"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )
+        )
       }
       {isLoading && <LoadingOverlay />}
     </div >

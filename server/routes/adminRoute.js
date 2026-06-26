@@ -18,7 +18,8 @@ import {
     rejectHodLeave,
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
-    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus
+    uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus,
+    pauseLeave, resumeLeaveCounting
 } from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
 import uploadMemory from '../middlewares/multerMemory.js';
@@ -57,6 +58,9 @@ adminRouter.post('/approve-leave', authUser, approveLeave);
 adminRouter.post('/reject-leave', authUser, rejectLeave);
 adminRouter.get('/employee-dashboard', authUser, getEmployeeDashboardData);
 adminRouter.post('/leave-resumed', authUser, resumeLeave);
+adminRouter.post('/pause-leave', authUser, pauseLeave);
+adminRouter.post('/resume-leave-counting', authUser, resumeLeaveCounting);
+
 
 
 // HOD Leaves

@@ -18,6 +18,8 @@ const leaveSchema = new mongoose.Schema({
   hodStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
   status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
   resumeStatus: { type: Boolean, default: false },
+  isPaused: { type: Boolean, default: false },
+  pauseDate: { type: Date },
   createdAt: { type: Date, default: Date.now },
   resumeDate: { type: Date },
   updatedAt: { type: Date, default: Date.now },

@@ -1066,6 +1066,73 @@ const resumeLeave = async (req, res) => {
   }
 };
 
+// Pause Leave
+const pauseLeave = async (req, res) => {
+  try {
+    const { leaveId } = req.body;
+    if (!leaveId) {
+      return res.status(400).json({ success: false, message: 'Leave ID is required' });
+    }
+
+    const leave = await Leave.findById(leaveId);
+    if (!leave) {
+      return res.status(404).json({ success: false, message: 'Leave not found' });
+    }
+
+    leave.isPaused = true;
+    leave.pauseDate = new Date();
+    await leave.save();
+
+    res.json({ success: true, message: 'Leave paused successfully' });
+  } catch (error) {
+    console.error('Pause Leave Error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+// Resume Leave Counting
+const resumeLeaveCounting = async (req, res) => {
+  try {
+    const { leaveId } = req.body;
+    if (!leaveId) {
+      return res.status(400).json({ success: false, message: 'Leave ID is required' });
+    }
+
+    const leave = await Leave.findById(leaveId);
+    if (!leave) {
+      return res.status(404).json({ success: false, message: 'Leave not found' });
+    }
+
+    if (!leave.isPaused || !leave.pauseDate) {
+      return res.status(400).json({ success: false, message: 'Leave is not paused' });
+    }
+
+    const pauseDate = new Date(leave.pauseDate);
+    const resumeDate = new Date();
+
+    // Calculate calendar days paused (including weekends as they were already excluded from totalDays)
+    const timeDiff = resumeDate.getTime() - pauseDate.getTime();
+    const daysPaused = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+    if (daysPaused > 0) {
+      // Extend the 'to' date
+      const newTo = new Date(leave.to);
+      newTo.setDate(newTo.getDate() + daysPaused);
+      leave.to = newTo;
+    }
+
+    leave.isPaused = false;
+    leave.pauseDate = null;
+    await leave.save();
+
+    res.json({ success: true, message: 'Leave resumed and period adjusted' });
+  } catch (error) {
+    console.error('Resume Counting Error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+
 
 // API to add salary using staffId lookup
 // API to add salary using staffId lookup
@@ -2715,6 +2782,7 @@ export {
   submitKpi, getKpi, hodEvaluation, getKpiByDepartment, adminEvaluation, updateAdminEvaluation,
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
   applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
-  getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus
+  getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus,
+  pauseLeave, resumeLeaveCounting
 
 }
