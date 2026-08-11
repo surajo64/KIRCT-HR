@@ -19,7 +19,7 @@ import {
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
     uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus,
-    pauseLeave, resumeLeaveCounting
+    pauseLeave, resumeLeaveCounting, adminResetUserPassword
 } from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
 import uploadMemory from '../middlewares/multerMemory.js';
@@ -84,6 +84,8 @@ adminRouter.get('/get-employee-salaries', authUser, getEmployeeSalaries);
 adminRouter.post('/change-password', authUser, changePassword);
 adminRouter.post('/forgot-password', forgotPassword)
 adminRouter.post("/reset-password/:token", resetPassword)
+adminRouter.post('/admin-reset-user-password', authUser, adminResetUserPassword);
+
 
 
 // Performance evaluation

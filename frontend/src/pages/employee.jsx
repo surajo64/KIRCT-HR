@@ -56,6 +56,13 @@ const employee = () => {
   const [rent, setRent] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  // Admin Reset Password State
+  const [resetPasswordModalEmp, setResetPasswordModalEmp] = useState(null);
+  const [newResetPassword, setNewResetPassword] = useState('');
+  const [confirmResetPassword, setConfirmResetPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [showResetPasswordInput, setShowResetPasswordInput] = useState(false);
+
   // Payroll specific fields
   const [basicSalary, setBasicSalary] = useState('');
   const [overtimeRate, setOvertimeRate] = useState('');
@@ -341,6 +348,47 @@ const employee = () => {
     }
   };
 
+  // Handle Admin Reset Employee Password
+  const handleAdminResetPassword = async (e) => {
+    e.preventDefault();
+    if (!newResetPassword || newResetPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+    if (newResetPassword !== confirmResetPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    try {
+      setResettingPassword(true);
+      const { data } = await axios.post(
+        `${backendUrl}/api/admin/admin-reset-user-password`,
+        {
+          employeeId: resetPasswordModalEmp._id,
+          newPassword: newResetPassword
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          }
+        }
+      );
+      if (data.success) {
+        toast.success(data.message || 'Password reset successfully!');
+        setResetPasswordModalEmp(null);
+        setNewResetPassword('');
+        setConfirmResetPassword('');
+      } else {
+        toast.error(data.message || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Admin reset password error', error);
+      toast.error(error.response?.data?.message || error.message || 'Error resetting password');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   // Filter employees based on search
   useEffect(() => {
     const filtered = (employees || []).filter((emp) => {
@@ -586,13 +634,13 @@ const employee = () => {
               <div className="flex justify-end gap-2 whitespace-nowrap">
                 <button
                   onClick={() => handleView(item)}
-                  className="bg-blue-500 text-white text-sm px-3 py-1 rounded-full"
+                  className="bg-blue-500 text-white text-sm px-3 py-1 rounded-full hover:bg-blue-600 transition"
                 >
                   View
                 </button>
                 <button
                   onClick={() => handleUpdate(item)}
-                  className="bg-green-500 text-white text-sm px-3 py-1 rounded-full"
+                  className="bg-green-500 text-white text-sm px-3 py-1 rounded-full hover:bg-green-600 transition"
                 >
                   Update
                 </button>
@@ -603,7 +651,9 @@ const employee = () => {
                 >
                   {item.status ? 'Deactivate' : 'Activate'}
                 </button>
+
               </div>
+
             </div>
           ))
         ) : (
@@ -757,7 +807,18 @@ const employee = () => {
                     className="w-full p-2 border border-green-300 rounded"
                   />
 
-                  {!editingAdmin && (
+                  {editingAdmin ? (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1 font-medium">New Password (optional)</label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Leave blank to keep existing"
+                        className="w-full p-2 border border-green-300 rounded"
+                      />
+                    </div>
+                  ) : (
                     <input
                       type="password"
                       value={password}
@@ -767,6 +828,7 @@ const employee = () => {
                       className="w-full p-2 border border-green-300 rounded"
                     />
                   )}
+
 
                   <textarea
                     value={address}
@@ -1046,14 +1108,30 @@ const employee = () => {
               {selectedEmployee.userId?.name?.toUpperCase()}
             </h2>
 
-            {/* Profile Image */}
+            {/* Profile Image & Reset Password Action */}
             <div className="mt-4 sm:mt-6 text-center">
               <img
                 src={selectedEmployee.userId?.profileImage}
                 alt="Profile"
-                className="w-28 h-28 sm:w-44 sm:h-44 rounded-full object-cover inline-block border border-gray-300 mb-6"
+                className="w-28 h-28 sm:w-44 sm:h-44 rounded-full object-cover inline-block border border-gray-300 mb-4"
               />
+              <div className="mb-6">
+                <button
+                  onClick={() => {
+                    setResetPasswordModalEmp(selectedEmployee);
+                    setNewResetPassword('');
+                    setConfirmResetPassword('');
+                  }}
+                  className="bg-amber-500 hover:bg-amber-600 text-white text-sm px-4 py-2 rounded-full font-medium shadow transition inline-flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z" />
+                  </svg>
+                  Reset Password
+                </button>
+              </div>
             </div>
+
 
             {/* Info Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 text-start">
@@ -1189,6 +1267,92 @@ const employee = () => {
           </div>
         </div>
       )}
+
+      {/* Admin Reset Password Modal */}
+      {resetPasswordModalEmp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border-t-4 border-amber-500 transform transition-all">
+            <div className="flex justify-between items-center pb-3 border-b mb-4">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z" />
+                </svg>
+                Reset Employee Password
+              </h2>
+              <button
+                onClick={() => setResetPasswordModalEmp(null)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+              <p><span className="font-semibold">Employee:</span> {resetPasswordModalEmp.name || resetPasswordModalEmp.userId?.name}</p>
+              <p><span className="font-semibold">Staff ID:</span> {resetPasswordModalEmp.staffId}</p>
+            </div>
+
+            <form onSubmit={handleAdminResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showResetPasswordInput ? "text" : "password"}
+                    value={newResetPassword}
+                    onChange={(e) => setNewResetPassword(e.target.value)}
+                    placeholder="Enter new password (min. 6 chars)"
+                    required
+                    minLength={6}
+                    className="w-full p-2.5 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPasswordInput(!showResetPasswordInput)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-600 hover:text-amber-800 text-xs font-semibold"
+                  >
+                    {showResetPasswordInput ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm New Password
+                </label>
+                <input
+                  type={showResetPasswordInput ? "text" : "password"}
+                  value={confirmResetPassword}
+                  onChange={(e) => setConfirmResetPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  required
+                  minLength={6}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+                <button
+                  type="button"
+                  onClick={() => setResetPasswordModalEmp(null)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 flex items-center gap-2"
+                >
+                  {resettingPassword ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
 
       {showDetailModal && (
         <div

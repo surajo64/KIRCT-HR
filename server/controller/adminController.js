@@ -1696,6 +1696,57 @@ const resetPassword = async (req, res) => {
 };
 
 
+// Admin Reset Employee Password
+const adminResetUserPassword = async (req, res) => {
+  try {
+    const adminId = req.userId;
+    const adminUser = await User.findById(adminId);
+
+    if (!adminUser || (adminUser.role !== 'admin' && adminUser.role !== 'HREmployee')) {
+      return res.json({ success: false, message: "Unauthorized. Admin privileges required." });
+    }
+
+    const { employeeId, userId, newPassword } = req.body;
+
+    let targetUserId = userId;
+    if (!targetUserId && employeeId) {
+      const emp = await Employee.findById(employeeId);
+      if (emp) targetUserId = emp.userId;
+    }
+
+    if (!targetUserId) {
+      return res.json({ success: false, message: "Employee ID or User ID is required" });
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.json({ success: false, message: "Password must be at least 6 characters long" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      targetUserId,
+      { password: hashedPassword, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      message: `Password for ${updatedUser.name} reset successfully`
+    });
+  } catch (error) {
+    console.error("Admin Reset User Password Error:", error);
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+
+
 
 // Api To Approve Leave
 const approveHodLeave = async (req, res) => {
@@ -2783,6 +2834,5 @@ export {
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
   applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
   getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus,
-  pauseLeave, resumeLeaveCounting
-
+  pauseLeave, resumeLeaveCounting, adminResetUserPassword
 }
