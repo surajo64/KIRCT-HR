@@ -1726,9 +1726,61 @@ const forgotPassword = async (req, res) => {
 
     if (emailSent) {
       return res.status(200).json({ success: true, message: 'Password reset email sent successfully. Please check your inbox.', token });
-    } else {
-      return res.status(500).json({ success: false, message: 'Failed to send password reset email via Brevo.' });
     }
+
+    // 3. Try Gmail Nodemailer Fallback (if Brevo API & Brevo SMTP fail due to IP restriction)
+    const gmailUser = process.env.EMAIL_USER || 'kanoindependentresearchcentert@gmail.com';
+    const gmailPass = process.env.EMAIL_PASS || 'kscn ajrz dzyy oosl';
+
+    if (gmailUser && gmailPass) {
+      try {
+        console.log(`Trying Gmail SMTP fallback for ${user.email}...`);
+        const gmailTransporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: gmailUser,
+            pass: gmailPass
+          }
+        });
+
+        await gmailTransporter.sendMail({
+          from: `"KIRCT EMS" <${gmailUser}>`,
+          to: user.email,
+          subject: 'Password Reset Request - KIRCT EMS',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="color: #16a34a; margin: 0; font-size: 24px;">KIRCT EMS</h2>
+                <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Employee Management System</p>
+              </div>
+              <div style="border-top: 2px solid #22c55e; padding-top: 20px;">
+                <h3 style="color: #1e293b; font-size: 18px; margin-bottom: 12px;">Password Reset Request</h3>
+                <p style="color: #334155; font-size: 15px; line-height: 1.6;">Hello <strong>${user.name}</strong>,</p>
+                <p style="color: #334155; font-size: 15px; line-height: 1.6;">We received a request to reset your password. Click the button below to choose a new password for your account:</p>
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${resetLink}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">Reset My Password</a>
+                </div>
+                <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">If the button above doesn't work, copy and paste this link into your browser:</p>
+                <p style="color: #2563eb; font-size: 13px; word-break: break-all; background-color: #f1f5f9; padding: 10px; border-radius: 6px;">${resetLink}</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+                <p style="color: #94a3b8; font-size: 12px; margin: 0;">This password reset link will expire in 1 hour. If you did not request a password reset, please ignore this message.</p>
+              </div>
+            </div>
+          `,
+          text: `Hello ${user.name},\n\nYou requested a password reset for KIRCT EMS. Click the link below to reset your password:\n\n${resetLink}\n\nThis link is valid for 1 hour.`
+        });
+
+        console.log('Gmail Nodemailer email sent successfully');
+        return res.status(200).json({ success: true, message: 'Password reset email sent successfully. Please check your inbox.', token });
+      } catch (gmailErr) {
+        console.error('Gmail Nodemailer fallback failed:', gmailErr.message);
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send reset email. Brevo blocked IP (please authorize IP at https://app.brevo.com/security/authorised_ips or disable IP restrictions).'
+    });
 
   } catch (error) {
     console.error('Error in forgotPassword:', error);
