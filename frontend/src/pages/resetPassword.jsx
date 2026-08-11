@@ -19,23 +19,23 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!password || password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
     setLoading(true);
 
-    console.log("Received Token:", token);
-    console.log("New Password:", password);
-   try {
-  const { data } = await axios.post(`${backendUrl}/api/admin/reset-password/${token}`, { password });
-  
-      console.log("Received Token:", token);
-      console.log("New Password:", password);
-      toast.success( 'Password updated successfully');
-        navigate("/login"); 
-  
-      
-      
-    
+    try {
+      const { data } = await axios.post(`${backendUrl}/api/admin/reset-password/${token}`, { password });
+      if (data.success !== false) {
+        toast.success(data.message || 'Password updated successfully');
+        navigate('/login');
+      } else {
+        toast.error(data.message || 'Error resetting password');
+      }
     } catch (error) {
-      toast.error('Error resetting password');
+      console.error('Reset Password error:', error);
+      toast.error(error.response?.data?.message || 'Error resetting password');
     } finally {
       setLoading(false);
     }

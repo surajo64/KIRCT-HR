@@ -1619,14 +1619,18 @@ export default changePassword;
 
 
 
-// Forgot Passowd
+// Forgot Password using Brevo API
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User with this email does not exist' });
     }
 
     // Generate reset token (valid for 1 hour)
@@ -1635,65 +1639,147 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // Prepare email
-    const emailFrom = process.env.EMAIL_FROM || process.env.EMAIL_USER;
-    if (!process.env.SENDGRID_API_KEY || !emailFrom) {
-      console.error('SendGrid API key or sender email missing in environment variables');
-      return res.status(500).json({ message: 'Email configuration missing' });
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetLink = `${clientUrl}/reset-password/${token}`;
+
+    const brevoApiKey = process.env.BREVO_PASS;
+    const senderEmail = process.env.SENDER_EMAIL || process.env.EMAIL_USER || 'info@kirct.com';
+
+    if (!brevoApiKey) {
+      console.error('BREVO_PASS missing in environment variables');
+      return res.status(500).json({ success: false, message: 'Email service configuration missing (BREVO_PASS)' });
     }
 
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    let emailSent = false;
 
-    const resetLink = `${process.env.CLIENT_URL}/reset-password/${token}`;
-    const msg = {
-      to: user.email,
-      from: emailFrom, // must be a verified sender in SendGrid
-      subject: 'Password Reset Request',
-      text: `Hello ${user.name},\n\nYou requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n`,
-    };
-
-    // Send email
+    // 1. Try Brevo REST API v3 (Direct HTTPS API call)
     try {
-      await sgMail.send(msg);
-      console.log(`SendGrid email sent to ${user.email}`);
-    } catch (mailError) {
-      console.error('SendGrid send error:', mailError);
-      return res.status(500).json({ message: 'Failed to send reset email' });
+      console.log(`Sending Brevo API reset email to ${user.email}...`);
+      const apiRes = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: { name: 'KIRCT Employee Management System', email: senderEmail },
+          to: [{ email: user.email, name: user.name }],
+          subject: 'Password Reset Request - KIRCT EMS',
+          htmlContent: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="color: #16a34a; margin: 0; font-size: 24px;">KIRCT EMS</h2>
+                <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Employee Management System</p>
+              </div>
+              <div style="border-top: 2px solid #22c55e; padding-top: 20px;">
+                <h3 style="color: #1e293b; font-size: 18px; margin-bottom: 12px;">Password Reset Request</h3>
+                <p style="color: #334155; font-size: 15px; line-height: 1.6;">Hello <strong>${user.name}</strong>,</p>
+                <p style="color: #334155; font-size: 15px; line-height: 1.6;">We received a request to reset your password. Click the button below to choose a new password for your account:</p>
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${resetLink}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">Reset My Password</a>
+                </div>
+                <p style="color: #64748b; font-size: 13px; margin-bottom: 8px;">If the button above doesn't work, copy and paste this link into your browser:</p>
+                <p style="color: #2563eb; font-size: 13px; word-break: break-all; background-color: #f1f5f9; padding: 10px; border-radius: 6px;">${resetLink}</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+                <p style="color: #94a3b8; font-size: 12px; margin: 0;">This password reset link will expire in 1 hour. If you did not request a password reset, please ignore this message.</p>
+              </div>
+            </div>
+          `,
+          textContent: `Hello ${user.name},\n\nYou requested a password reset for KIRCT EMS. Click the link below to reset your password:\n\n${resetLink}\n\nThis link is valid for 1 hour. If you did not request this, please ignore this email.\n`
+        },
+        {
+          headers: {
+            'accept': 'application/json',
+            'api-key': brevoApiKey,
+            'content-type': 'application/json'
+          },
+          timeout: 10000
+        }
+      );
+
+      console.log('Brevo REST API email sent successfully:', apiRes.data);
+      emailSent = true;
+    } catch (apiErr) {
+      console.warn('Brevo REST API call failed, trying Nodemailer SMTP fallback:', apiErr.response?.data || apiErr.message);
+
+      // 2. Try Nodemailer Brevo SMTP Fallback
+      try {
+        const transporter = nodemailer.createTransport({
+          host: 'smtp-relay.brevo.com',
+          port: 587,
+          secure: false,
+          auth: {
+            user: senderEmail,
+            pass: brevoApiKey
+          }
+        });
+
+        await transporter.sendMail({
+          from: `"KIRCT EMS" <${senderEmail}>`,
+          to: user.email,
+          subject: 'Password Reset Request - KIRCT EMS',
+          text: `Hello ${user.name},\n\nYou requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n`
+        });
+
+        console.log('Nodemailer Brevo SMTP email sent successfully');
+        emailSent = true;
+      } catch (smtpErr) {
+        console.error('Nodemailer Brevo SMTP fallback failed:', smtpErr.message);
+      }
     }
 
-    res.status(200).json({ success: true, message: 'Password reset email sent', token });
+    if (emailSent) {
+      return res.status(200).json({ success: true, message: 'Password reset email sent successfully. Please check your inbox.', token });
+    } else {
+      return res.status(500).json({ success: false, message: 'Failed to send password reset email via Brevo.' });
+    }
+
   } catch (error) {
-    console.error('Error resetting password:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in forgotPassword:', error);
+    res.status(500).json({ success: false, message: 'Server error during forgot password' });
   }
 };
 
 
-// reset passowrd
+// Reset Password controller
 const resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { password } = req.body;
-    // Verify and decode token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (tokenErr) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired password reset link' });
+    }
+
     const user = await User.findById(decoded.id);
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired token' });
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.resetPasswordExpires && user.resetPasswordExpires < Date.now()) {
+      return res.status(400).json({ success: false, message: 'Password reset link has expired. Please request a new link.' });
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     user.password = hashedPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
     await user.save();
-    res.status(200).json({ message: 'Password updated successfully' });
+    res.status(200).json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error resetting password:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error updating password' });
   }
 };
+
 
 
 // Admin Reset Employee Password

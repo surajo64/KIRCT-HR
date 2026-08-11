@@ -19,7 +19,9 @@ const ForgotPassword = () => {
       const { data } = await axios.post(`${backendUrl}/api/admin/forgot-password`, { email });
       if (data.success) {
         setEmailSent(true);
-        toast.success('Password reset email sent. Check your inbox.');
+        toast.success(data.message || 'Password reset email sent. Check your inbox.');
+      } else {
+        toast.error(data.message || 'Failed to send reset email');
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error sending reset email');
