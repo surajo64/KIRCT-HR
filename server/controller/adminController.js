@@ -18,7 +18,7 @@ import Kpi from "../models/Kpi.js";
 import AdminEvaluation from "../models/adminEvaluation.js";
 import Attendance from "../models/attendance.js";
 import Loan from "../models/loan.js";
-import { executeMonthlyDeduction, processAllApprovedLoans, getDefaultDeductionStartMonth } from "../jobs/loanDeductionJob.js";
+import { executeMonthlyDeduction, processAllApprovedLoans, getDefaultDeductionStartMonth } from "../utils/loanDeductionService.js";
 import Payroll from "../models/Payroll.js";
 import BonusModel from "../models/BonusModel.js";
 import axios from 'axios';
