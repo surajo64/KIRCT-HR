@@ -11,6 +11,17 @@ const loanSchema = new mongoose.Schema({
   reason: { type: String },
   status: { type: String, enum: ['Pending', 'Approved', 'Rejected', 'Completed'], default: 'Pending' },
   approvedAt: { type: Date },
+  deductionStartMonth: { type: String }, // Format: "YYYY-MM"
+  lastDeductionDate: { type: Date },
+  repaymentHistory: [
+    {
+      amount: { type: Number, required: true },
+      deductionDate: { type: Date, default: Date.now },
+      monthYear: { type: String }, // Format: "YYYY-MM"
+      method: { type: String, default: 'Automatic Monthly Deduction' },
+      balanceAfter: { type: Number }
+    }
+  ],
   createdAt: { type: Date, default: Date.now }
 });
 

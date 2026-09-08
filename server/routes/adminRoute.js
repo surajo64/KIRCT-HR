@@ -19,7 +19,7 @@ import {
     rejectLeave, resetPassword, resumeLeave, submitKpi, updateAdminEvaluation, updateDepartment, updateEmployee, updateEvaluation, updateLeave,
     updateLoan,
     uploadAttendance, getHodDashboard, getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus,
-    pauseLeave, resumeLeaveCounting, adminResetUserPassword
+    pauseLeave, resumeLeaveCounting, adminResetUserPassword, processMonthlyDeductions, applySingleLoanDeduction
 } from '../controller/adminController.js';
 import upload from '../middlewares/multer.js';
 import uploadMemory from '../middlewares/multerMemory.js';
@@ -114,6 +114,8 @@ adminRouter.get('/get-all-loan', authUser, getAllyLoan);
 adminRouter.get('/get-employee-loan', authUser, getEmployeeLoan);
 adminRouter.post('/approve-loan', authUser, approveRejectLoan);
 adminRouter.post('/update-loan', authUser, updateLoan);
+adminRouter.post('/process-monthly-deductions', authUser, processMonthlyDeductions);
+adminRouter.post('/apply-single-deduction', authUser, applySingleLoanDeduction);
 
 // Login Tracking Routes
 adminRouter.get('/login-logs', authUser, getLoginLogs);

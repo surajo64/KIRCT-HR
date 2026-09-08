@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import {
   CalendarCheck,
@@ -18,6 +19,7 @@ import {
 import axios from 'axios';
 
 const EmployeeDashboard = () => {
+  const navigate = useNavigate();
   const { token, user, backendUrl } = useContext(AppContext);
 
   const [dashboardData, setDashboardData] = useState({
@@ -244,23 +246,65 @@ const EmployeeDashboard = () => {
 
       {/* Recent Loans */}
       <div className="mt-6 bg-white rounded-2xl shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Loan Summary</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">Loan Status & Summary</h3>
+          <button 
+            onClick={() => navigate('/employee-loan')}
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+          >
+            View All Loans →
+          </button>
+        </div>
         {dashboardData.loans?.length > 0 ? (
           <div className="space-y-3">
-            {dashboardData.loans.slice(0, 3).map((loan, index) => (
-              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">₦{loan.amount.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">Reason: {loan.reason}</p>
+            {dashboardData.loans.slice(0, 3).map((loanItem, index) => {
+              const target = loanItem.status === 'Approved' || loanItem.status === 'Completed'
+                ? (loanItem.approvedAmount || loanItem.amount)
+                : loanItem.amount;
+              const repaid = loanItem.totalRepaid || 0;
+              const outstanding = Math.max(0, target - repaid);
+              const pct = target > 0 ? Math.min(100, Math.round((repaid / target) * 100)) : 0;
+
+              return (
+                <div key={index} className="p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-slate-50 transition">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">
+                        Requested: ₦{loanItem.amount?.toLocaleString()}
+                        {loanItem.approvedAmount > 0 && loanItem.status === 'Approved' && (
+                          <span className="ml-2 text-emerald-700 font-semibold">(Approved: ₦{loanItem.approvedAmount.toLocaleString()})</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">Reason: {loanItem.reason}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                      loanItem.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                      loanItem.status === 'Pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                      loanItem.status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                      'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}>
+                      {loanItem.status}
+                    </span>
+                  </div>
+
+                  {(loanItem.status === 'Approved' || loanItem.status === 'Completed') && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Repaid: <strong className="text-blue-700">₦{repaid.toLocaleString()}</strong></span>
+                        <span>Outstanding: <strong className="text-gray-900">₦{outstanding.toLocaleString()}</strong></span>
+                        <span>Monthly Ded: <strong className="text-emerald-700">₦{(loanItem.monthDeduction || Math.ceil(target / (loanItem.durationInMonths || 1))).toLocaleString()}</strong></span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-2 rounded-full ${pct >= 100 ? 'bg-blue-600' : 'bg-emerald-600'}`}
+                          style={{ width: `${pct}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${loan.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                  loan.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                  {loan.status}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-gray-500">No active loans found</p>

@@ -18,6 +18,7 @@ import Kpi from "../models/Kpi.js";
 import AdminEvaluation from "../models/adminEvaluation.js";
 import Attendance from "../models/attendance.js";
 import Loan from "../models/loan.js";
+import { executeMonthlyDeduction, processAllApprovedLoans, getDefaultDeductionStartMonth } from "../jobs/loanDeductionJob.js";
 import Payroll from "../models/Payroll.js";
 import BonusModel from "../models/BonusModel.js";
 import axios from 'axios';
@@ -2517,7 +2518,7 @@ const applyLoan = async (req, res) => {
 
 // Update an existing loan
 const updateLoan = async (req, res) => {
-  const { loanId, amount, durationInMonths, reason, approvedAmount } = req.body;
+  const { loanId, amount, durationInMonths, reason, approvedAmount, deductionStartMonth } = req.body;
 
   try {
     const loan = await Loan.findById(loanId);
@@ -2535,12 +2536,13 @@ const updateLoan = async (req, res) => {
     if (reason) loan.reason = reason;
     if (approvedAmount !== undefined) loan.approvedAmount = approvedAmount;
     if (durationInMonths) loan.durationInMonths = durationInMonths;
+    if (deductionStartMonth) loan.deductionStartMonth = deductionStartMonth;
 
     // Use approvedAmount if set (usually by admin), otherwise fallback to requested amount
     const effectiveAmount = loan.approvedAmount > 0 ? loan.approvedAmount : loan.amount;
 
     // Calculate monthly deduction
-    loan.monthDeduction = (effectiveAmount / loan.durationInMonths).toFixed(2);
+    loan.monthDeduction = Math.ceil(effectiveAmount / (loan.durationInMonths || 1));
 
     await loan.save();
 
@@ -2582,7 +2584,7 @@ const getEmployeeLoan = async (req, res) => {
 
 // Approve or Reject Loan
 const approveRejectLoan = async (req, res) => {
-  const { loanId, status } = req.body;
+  const { loanId, status, approvedAmount, deductionStartMonth } = req.body;
 
   try {
     const loan = await Loan.findById(loanId);
@@ -2592,13 +2594,25 @@ const approveRejectLoan = async (req, res) => {
 
     loan.status = status;
 
-    if (
-      status === 'Approved' &&
-      (!loan.approvedAmount || loan.approvedAmount === "") // if not set
-    ) {
-      loan.approvedAmount = loan.amount; // fallback to requested amount
-      loan.approvedAt = new Date();
-      loan.monthDeduction = Math.ceil(loan.approvedAmount / loan.durationInMonths); // optional: auto set monthly deduction
+    if (status === 'Approved') {
+      if (approvedAmount !== undefined && Number(approvedAmount) > 0) {
+        loan.approvedAmount = Number(approvedAmount);
+      } else if (!loan.approvedAmount || Number(loan.approvedAmount) <= 0) {
+        loan.approvedAmount = loan.amount;
+      }
+
+      if (!loan.approvedAt) {
+        loan.approvedAt = new Date();
+      }
+
+      // If deduction start is not specified, use the next month of the approval month
+      if (deductionStartMonth) {
+        loan.deductionStartMonth = deductionStartMonth;
+      } else if (!loan.deductionStartMonth) {
+        loan.deductionStartMonth = getDefaultDeductionStartMonth(loan.approvedAt);
+      }
+
+      loan.monthDeduction = Math.ceil(loan.approvedAmount / (loan.durationInMonths || 1));
     }
 
     await loan.save();
@@ -2606,6 +2620,63 @@ const approveRejectLoan = async (req, res) => {
     res.json({ success: true, message: `Loan ${status.toLowerCase()}`, loan });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Process monthly deductions for all approved loans (Admin)
+const processMonthlyDeductions = async (req, res) => {
+  try {
+    const { monthYear } = req.body; // optional "YYYY-MM"
+    const results = await processAllApprovedLoans(monthYear, "Admin Manual Process");
+    res.json({
+      success: true,
+      message: `Processed deductions: ${results.processed} deducted, ${results.skippedAlreadyDeducted} already up-to-date, ${results.completed} completed.`,
+      results,
+    });
+  } catch (error) {
+    console.error("Error processing monthly deductions:", error);
+    res.status(500).json({ success: false, message: "Failed to process deductions", error: error.message });
+  }
+};
+
+// Apply deduction for a single loan (Admin)
+const applySingleLoanDeduction = async (req, res) => {
+  try {
+    const { loanId, monthYear } = req.body;
+    if (!loanId) {
+      return res.status(400).json({ success: false, message: "Loan ID is required" });
+    }
+
+    const loan = await Loan.findById(loanId).populate("userId", "name email");
+    if (!loan) {
+      return res.status(404).json({ success: false, message: "Loan not found" });
+    }
+
+    if (loan.status !== "Approved") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot deduct from a loan with status '${loan.status}'`,
+      });
+    }
+
+    const result = await executeMonthlyDeduction(loan, monthYear, "Admin Loan Deduction");
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.reason || "Deduction could not be applied",
+        result,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: result.isCompleted ? "Deduction applied and loan is now completed!" : "Monthly deduction applied successfully",
+      result,
+      loan,
+    });
+  } catch (error) {
+    console.error("Error applying single loan deduction:", error);
+    res.status(500).json({ success: false, message: "Failed to apply deduction", error: error.message });
   }
 };
 
@@ -2972,5 +3043,5 @@ export {
   uploadAttendance, getAttendance, getAllAttendance, resumeLeave, deactivateEmployee, getEmployeesByStatus,
   applyLoan, getAllyLoan, approveRejectLoan, updateLoan, getEmployeeLoan, getAllUsers, getHodDashboard,
   getLoginLogs, getLoginFrequency, getActiveUsers, hodUpdateLeave, adminUpdateLeaveStatus,
-  pauseLeave, resumeLeaveCounting, adminResetUserPassword
+  pauseLeave, resumeLeaveCounting, adminResetUserPassword, processMonthlyDeductions, applySingleLoanDeduction
 }
